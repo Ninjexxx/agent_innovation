@@ -201,6 +201,63 @@ TEMPLATE = """
 """
 
 
+TEMPLATE_PRIORIZACAO = """
+## SCORE TAM/SAM/SOM
+
+| Critério | Peso | Nota (1-5) |
+|---|---|---|
+| TAM Tecnológico | 30% | [nota] |
+| SAM (Fit de Mercado) | 40% | [nota] |
+| SOM (Viabilidade) | 30% | [nota] |
+
+**Prioridade Namu = (TAM x 0.3) + (SAM x 0.4) + (SOM x 0.3) = [calcular]**
+
+**TAM:** Transformacional para a empresa.
+[Explique]
+
+**SAM:** Alta aderência à demanda do mercado.
+[Explique]
+
+**SOM:** Tecnologicamente viável de integrar e escalar.
+[Explique]
+
+---
+
+## FRAMEWORK DE NEGÓCIOS
+
+⬜ Benchmark (Iniciativas de Mercado)
+⬜ Diferenciação (Vendas)
+⬜ Qualidade (Evolução do que já existe)
+⬜ Produtividade (Eficiência Operacional)
+⬜ Flexibilidade (Integração e Evolução)
+⬜ Eficiência (Otimização de Custos)
+
+**Benchmark (Iniciativas de Mercado)**
+[Explique]
+
+**Diferenciação (Vendas)**
+[Explique]
+
+**Qualidade (Evolução do que já existe)**
+[Explique]
+
+**Produtividade (Eficiência Operacional)**
+[Explique]
+
+**Flexibilidade (Integração e Evolução)**
+[Explique]
+
+**Eficiência (Otimização de Custos)**
+[Explique]
+
+---
+
+## CONCLUSÃO
+
+[Conclusão estratégica objetiva para a Namu]
+"""
+
+
 # ─────────────────────────────────────────
 # 1. CACHE
 # ─────────────────────────────────────────
@@ -432,6 +489,62 @@ TEMPLATE:
     # Salva no cache
     cache_set(nome, url_ancora, resultado)
 
+    return resultado
+
+
+# ─────────────────────────────────────────
+# 5b. PRIORIZAÇÃO (SCORING)
+# ─────────────────────────────────────────
+
+def priorizar_tecnologia(nome: str, resultado_triagem: str) -> str:
+    """
+    Etapa 2: Recebe o resultado da triagem e gera o scoring TAM/SAM/SOM
+    + framework de negócios. Sem web search (usa só a triagem como input).
+    """
+    # Cache separado pra priorização
+    cache_key_prio = f"prio|{nome}"
+    cached = cache_get(cache_key_prio, "")
+    if cached:
+        print("\n✅ Priorização encontrada no cache (sem custo)")
+        return cached
+
+    print("\n📊 Claude gerando scoring de priorização...")
+
+    prompt = f"""Você é um analista sênior de inovação tecnológica.
+
+CONTEXTO DA EMPRESA:
+{CONTEXTO_NAMU}
+
+RESULTADO DA TRIAGEM (já realizada):
+{resultado_triagem}
+
+SUA TAREFA:
+Com base EXCLUSIVAMENTE na triagem acima, preencha o template de priorização abaixo.
+
+REGRAS DE SCORING:
+- TAM (peso 30%): 5 = muda o jogo da empresa / 1 = melhoria mínima
+- SAM (peso 40%): 5 = desejo direto do cliente / 1 = pouco interesse
+- SOM (peso 30%): 5 = fácil de empacotar (API/Doc) / 1 = muito complexo
+- Calcule: (TAM x 0.3) + (SAM x 0.4) + (SOM x 0.3) = Prioridade Namu
+- Para checkboxes (⬜), marque com ✅ os que se aplicam
+- Seja objetivo e estratégico, baseado nos dados da triagem
+- NÃO invente dados que não estão na triagem
+
+TEMPLATE:
+{TEMPLATE_PRIORIZACAO}"""
+
+    resposta = client.messages.create(
+        model=MODELO,
+        max_tokens=4000,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    resultado = resposta.content[0].text.strip()
+
+    # Salva no cache
+    cache_set(cache_key_prio, "", resultado)
+
+    print("   ✓ Scoring preenchido")
     return resultado
 
 
