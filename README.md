@@ -26,13 +26,19 @@ ANTHROPIC_API_KEY=sk-ant-your-key-here
 
 ## Usage
 
-### Interactive mode
+### Web interface (Streamlit)
+
+```bash
+streamlit run app.py
+```
+
+### CLI — Interactive mode
 
 ```bash
 python agent_innovation.py
 ```
 
-### Batch mode
+### CLI — Batch mode
 
 ```python
 from agent_innovation import avaliar_lista

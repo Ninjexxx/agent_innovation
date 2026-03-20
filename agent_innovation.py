@@ -21,6 +21,8 @@ Como usar:
 import os
 import re
 import glob
+import json
+import hashlib
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -31,8 +33,17 @@ from docx import Document
 load_dotenv()
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# Modelo: troque para "claude-sonnet-4-20250514" se quiser mais qualidade (~$0.34/avaliação)
-MODELO = "claude-haiku-4-5-20251001"  # mais barato
+# Modelo: troque para "claude-sonnet-4-20250514" se quiser mais qualidade
+MODELO = "claude-haiku-4-5-20251001"
+
+CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+
+# Custos por 1M tokens (USD)
+CUSTOS = {
+    "claude-haiku-4-5-20251001":  {"input": 0.80, "output": 4.00},
+    "claude-sonnet-4-20250514":   {"input": 3.00, "output": 15.00},
+}
+CUSTO_WEB_SEARCH = 0.10  # por busca
 
 # ─────────────────────────────────────────
 # 0. LEITURA DOS DOCUMENTOS DE PROCESSO
@@ -191,7 +202,83 @@ TEMPLATE = """
 
 
 # ─────────────────────────────────────────
-# 1. LEITURA DA URL ÂNCORA
+# 1. CACHE
+# ─────────────────────────────────────────
+
+def _cache_key(nome: str, url: str) -> str:
+    raw = f"{nome.lower().strip()}|{url.strip()}"
+    return hashlib.md5(raw.encode()).hexdigest()
+
+
+def cache_get(nome: str, url: str) -> str | None:
+    path = os.path.join(CACHE_DIR, f"{_cache_key(nome, url)}.json")
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("resultado")
+    return None
+
+
+def cache_set(nome: str, url: str, resultado: str):
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    path = os.path.join(CACHE_DIR, f"{_cache_key(nome, url)}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"nome": nome, "url": url, "resultado": resultado,
+                   "data": datetime.now().isoformat()}, f, ensure_ascii=False)
+
+
+# ─────────────────────────────────────────
+# 2. VALIDAÇÃO DE URL
+# ─────────────────────────────────────────
+
+def validar_url(url: str) -> tuple[bool, str]:
+    """Testa se a URL é acessível. Retorna (ok, mensagem)."""
+    if not url:
+        return True, ""
+    try:
+        resp = requests.head(url, timeout=10, allow_redirects=True,
+                             headers={"User-Agent": "Mozilla/5.0"})
+        if resp.status_code < 400:
+            return True, f"URL acessível ({resp.status_code})"
+        return False, f"URL retornou status {resp.status_code}"
+    except requests.RequestException as e:
+        return False, f"URL inacessível: {e}"
+
+
+# ─────────────────────────────────────────
+# 3. ESTIMATIVA DE CUSTO
+# ─────────────────────────────────────────
+
+def estimar_custo(nome: str, url_ancora: str = "") -> dict:
+    """Estima custo da avaliação antes de rodar."""
+    # Estima tokens de input
+    chars_prompt = (
+        len(CONTEXTO_NAMU) + len(TEMPLATE) + len(DOCUMENTOS_PROCESSO)
+        + len(nome) + 500  # instruções fixas
+    )
+    if url_ancora:
+        chars_prompt += 6000  # max_chars da URL
+    tokens_input = chars_prompt // 4  # ~4 chars por token
+    tokens_output = 4000  # estimativa do template preenchido
+
+    custos = CUSTOS.get(MODELO, CUSTOS["claude-haiku-4-5-20251001"])
+    custo_input = (tokens_input / 1_000_000) * custos["input"]
+    custo_output = (tokens_output / 1_000_000) * custos["output"]
+    custo_search = CUSTO_WEB_SEARCH * 3  # média de 3 buscas
+
+    total = custo_input + custo_output + custo_search
+
+    return {
+        "tokens_input": tokens_input,
+        "tokens_output": tokens_output,
+        "custo_tokens": round(custo_input + custo_output, 4),
+        "custo_search": round(custo_search, 2),
+        "custo_total": round(total, 2),
+    }
+
+
+# ─────────────────────────────────────────
+# 4. LEITURA DA URL ÂNCORA
 # ─────────────────────────────────────────
 
 def ler_url(url: str, max_chars: int = 6000) -> str:
@@ -226,7 +313,7 @@ def ler_url(url: str, max_chars: int = 6000) -> str:
 
 
 # ─────────────────────────────────────────
-# 2. ANÁLISE HÍBRIDA VIA CLAUDE
+# 5. ANÁLISE HÍBRIDA VIA CLAUDE
 # ─────────────────────────────────────────
 
 def analisar_tecnologia(nome: str, url_ancora: str = "") -> str:
@@ -234,6 +321,12 @@ def analisar_tecnologia(nome: str, url_ancora: str = "") -> str:
     Claude recebe a URL âncora + faz buscas web adicionais automaticamente.
     Ao final preenche o template completo.
     """
+    # Verifica cache
+    cached = cache_get(nome, url_ancora)
+    if cached:
+        print("\n✅ Resultado encontrado no cache (sem custo)")
+        return cached
+
     print("\n🧠 Claude analisando com busca web + URL âncora...")
 
     # Lê a URL âncora se fornecida
@@ -334,11 +427,16 @@ TEMPLATE:
         )
     ]
 
-    return "\n".join(linhas_filtradas).strip()
+    resultado = "\n".join(linhas_filtradas).strip()
+
+    # Salva no cache
+    cache_set(nome, url_ancora, resultado)
+
+    return resultado
 
 
 # ─────────────────────────────────────────
-# 3. SALVAR DOCUMENTO
+# 6. SALVAR DOCUMENTO
 # ─────────────────────────────────────────
 
 def salvar_documento(nome: str, conteudo: str) -> str:
@@ -359,7 +457,7 @@ def salvar_documento(nome: str, conteudo: str) -> str:
 
 
 # ─────────────────────────────────────────
-# 4. EXECUÇÃO PRINCIPAL
+# 7. EXECUÇÃO PRINCIPAL
 # ─────────────────────────────────────────
 
 def avaliar_tecnologia(nome: str = "", url_ancora: str = ""):
