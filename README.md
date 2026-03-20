@@ -2,7 +2,7 @@
 
 AI agent that evaluates technologies for Namu's innovation radar. It scrapes web sources, reads internal process documents, and uses Claude (Anthropic) with web search to fill a structured evaluation template.
 
-> **Note:** All generated output is in Brazilian Portuguese (pt-BR), as this tool is designed for internal use at Namu.
+> **Note:** All generated output and code (variables, comments, prompts) are in Brazilian Portuguese (pt-BR), as this tool is designed for internal use at Namu.
 
 ## What it does
 
