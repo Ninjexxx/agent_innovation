@@ -33,6 +33,42 @@ from docx import Document
 load_dotenv()
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
+# Tavily (optional, additive search provider)
+USE_TAVILY = os.getenv("USE_TAVILY", "false").lower() in ("true", "1", "yes")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
+
+_tavily_client = None
+
+
+def _get_tavily_client():
+    global _tavily_client
+    if _tavily_client is None:
+        from tavily import TavilyClient
+        _tavily_client = TavilyClient(api_key=TAVILY_API_KEY)
+    return _tavily_client
+
+
+def buscar_tavily(query: str, max_results: int = 5) -> str:
+    """Pre-fetch search results via Tavily and return formatted snippets."""
+    try:
+        tavily = _get_tavily_client()
+        response = tavily.search(
+            query=query,
+            max_results=max_results,
+            search_depth="advanced",
+            topic="general",
+        )
+        partes = []
+        for r in response.get("results", []):
+            title = r.get("title", "")
+            url = r.get("url", "")
+            content = r.get("content", "")
+            partes.append(f"- **{title}** ({url})\n  {content}")
+        return "\n\n".join(partes) if partes else ""
+    except Exception as e:
+        print(f"   ⚠ Tavily search failed: {e}")
+        return ""
+
 # Modelo: troque para "claude-sonnet-4-20250514" se quiser mais qualidade
 MODELO = "claude-haiku-4-5-20251001"
 
@@ -393,6 +429,19 @@ def analisar_tecnologia(nome: str, url_ancora: str = "") -> str:
         conteudo_ancora = ler_url(url_ancora)
         print("   ✓ URL lida")
 
+    # Tavily pre-fetch (additive — runs before Claude call when enabled)
+    tavily_texto = ""
+    if USE_TAVILY and TAVILY_API_KEY:
+        print(f"   🔎 Buscando via Tavily: {nome}")
+        tavily_resultado = buscar_tavily(nome)
+        if tavily_resultado:
+            tavily_texto = (
+                f"\n\nRESULTADOS DE BUSCA (TAVILY):\n"
+                f"(Resultados pré-buscados via Tavily para contexto adicional)\n\n"
+                f"{tavily_resultado}"
+            )
+            print("   ✓ Resultados Tavily obtidos")
+
     # Monta o prompt
     ancora_texto = (
         f"\n\nCONTEÚDO DA URL ÂNCORA ({url_ancora}):\n{conteudo_ancora}"
@@ -421,7 +470,7 @@ CONTEXTO DA EMPRESA:
 {docs_texto}
 
 TECNOLOGIA A AVALIAR: {nome}
-{ancora_texto}
+{tavily_texto}{ancora_texto}
 
 SUA TAREFA:
 1. Use a ferramenta de busca web para pesquisar sobre "{nome}" — busque:
