@@ -265,5 +265,5 @@ Project under **internal testing at [Namu](https://namu.com.br)** — a Brazilia
 ---
 
 <p align="center">
-  Made with 🔭 by <a href="https://namu.com.br">Namu</a>
+  Made with 🔭 by Arthur Santos
 </p>
