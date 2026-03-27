@@ -15,105 +15,105 @@
 </p>
 
 <p align="center">
-  <em>🇧🇷 Output e código em português — projeto em testes internos na <a href="https://namu.com.br">Namu</a></em>
+  <em>🇧🇷 All generated output and code (variables, comments, prompts) are in Brazilian Portuguese (pt-BR) — internal testing at <a href="https://namu.com.br">Namu</a></em>
 </p>
 
 ---
 
-## 🧐 O que é?
+## 🧐 What is it?
 
-Agent Innovation é um agente de IA que avalia tecnologias para o radar de inovação da Namu. Ele combina scraping de URLs, leitura de documentos internos (`.docx`) e buscas web automáticas via Claude para preencher templates estruturados de triagem e priorização.
+Agent Innovation is an AI agent that evaluates technologies for Namu's innovation radar. It combines URL scraping, internal document reading (`.docx`), and automatic web searches via Claude to fill structured triage and prioritization templates.
 
-**Uma chamada. Avaliação completa. Sem copiar e colar.**
+**One call. Full evaluation. No copy-paste.**
 
 ```
-Tecnologia + URL âncora
+Technology + Anchor URL
          ↓
-  Leitura da URL (BeautifulSoup)
+  URL Reading (BeautifulSoup)
          ↓
-  Documentos de processo (.docx)
+  Process Documents (.docx)
          ↓
-  Claude + Web Search (até 5 buscas)
+  Claude + Web Search (up to 5 searches)
          ↓
   ┌──────────────────────────────────┐
-  │  Triagem (template estruturado)  │
+  │  Triage (structured template)    │
   └──────────────────────────────────┘
          ↓
   ┌──────────────────────────────────┐
-  │  Priorização (TAM/SAM/SOM)      │
+  │  Prioritization (TAM/SAM/SOM)   │
   └──────────────────────────────────┘
          ↓
-  Markdown (.md) + Cache JSON
+  Markdown (.md) + JSON Cache
 ```
 
 ---
 
-## 📊 O que gera
+## 📊 What it generates
 
-| Etapa | Descrição | Web Search |
-|-------|-----------|:----------:|
-| 🔍 Triagem | Identificação, critérios de entrada, maturidade, custo, complexidade, decisão | ✅ Sim (até 5) |
-| 📊 Priorização | Score TAM/SAM/SOM + framework de negócios (6 categorias) | ❌ Não |
-| 💾 Cache | Resultados salvos em JSON — reprocessamento sem custo | — |
+| Stage | Description | Web Search |
+|-------|-------------|:----------:|
+| 🔍 Triage | Identification, entry criteria, maturity, cost, complexity, decision | ✅ Yes (up to 5) |
+| 📊 Prioritization | TAM/SAM/SOM score + business framework (6 categories) | ❌ No |
+| 💾 Cache | Results saved as JSON — reprocessing at zero cost | — |
 
-### Template de Triagem
+### Triage Template
 
-- Identificação da tecnologia e categoria
-- Critérios de entrada no radar (impacto estratégico, geração de dados, escalabilidade)
-- Triagem (dor resolvida, maturidade, estimativa financeira, complexidade técnica)
-- Decisão de triagem (avança / observa / descarta)
+- Technology identification and category
+- Radar entry criteria (strategic impact, data generation, scalability)
+- Triage (pain point, maturity, cost estimate, technical complexity)
+- Triage decision (advance / observe / discard)
 
-### Template de Priorização
+### Prioritization Template
 
-- Score TAM/SAM/SOM com pesos (30%/40%/30%)
-- Framework de negócios: Benchmark, Diferenciação, Qualidade, Produtividade, Flexibilidade, Eficiência
-- Conclusão estratégica
-
----
-
-## ✅ Custos por avaliação
-
-| Modelo | Custo/avaliação | Qualidade |
-|--------|:--------------:|:---------:|
-| `claude-haiku-4-5-20251001` (padrão) | **~$0.05** | Boa |
-| `claude-sonnet-4-20250514` | ~$0.34 | Alta |
-
-> Priorização custa ~$0.01 adicional (sem web search).
+- TAM/SAM/SOM score with weights (30%/40%/30%)
+- Business framework: Benchmark, Differentiation, Quality, Productivity, Flexibility, Efficiency
+- Strategic conclusion
 
 ---
 
-## ⚡ Início rápido
+## ✅ Cost per evaluation
 
-### Pré-requisitos
+| Model | Cost/evaluation | Quality |
+|-------|:--------------:|:---------:|
+| `claude-haiku-4-5-20251001` (default) | **~$0.05** | Good |
+| `claude-sonnet-4-20250514` | ~$0.34 | High |
+
+> Prioritization costs ~$0.01 extra (no web search).
+
+---
+
+## ⚡ Quick start
+
+### Prerequisites
 
 - Python 3.11+
-- Chave de API da [Anthropic](https://console.anthropic.com/)
-- **Não precisa de GPU**
-- Documentos `.docx` do processo de inovação (opcional)
+- [Anthropic](https://console.anthropic.com/) API key
+- **No GPU required**
+- Innovation process `.docx` documents (optional)
 
-### Instalação
+### Installation
 
 ```bash
-# Clone o repositório
+# Clone the repository
 git clone https://github.com/Ninjexxx/agent_innovation.git
 cd agent_innovation
 
-# Crie o ambiente virtual
+# Create virtual environment
 python -m venv .venv
 
-# Ative (Windows)
+# Activate (Windows)
 .venv\Scripts\activate
 
-# Ative (Linux/Mac)
+# Activate (Linux/Mac)
 source .venv/bin/activate
 
-# Instale as dependências
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### Configuração
+### Configuration
 
-Crie um arquivo `.env` na raiz:
+Create a `.env` file in the project root:
 
 ```
 ANTHROPIC_API_KEY=sk-ant-your-key-here
@@ -121,28 +121,28 @@ ANTHROPIC_API_KEY=sk-ant-your-key-here
 
 ---
 
-## 🎬 Como usar
+## 🎬 How to use
 
-### 1. 🌐 Interface web (Streamlit) — recomendado
+### 1. 🌐 Web interface (Streamlit) — recommended
 
 ```bash
 streamlit run app.py
 ```
 
-Abre o dashboard com:
-- Inputs de nome + URL
-- Indicador de cache e validação de URL
-- Estimativa de custo antes de rodar
-- Botão de triagem → resultado renderizado + download `.md`
-- Botão de priorização → scoring TAM/SAM/SOM + download `.md`
+Opens a dashboard with:
+- Name + URL inputs
+- Cache indicator and URL validation
+- Cost estimate before running
+- Triage button → rendered result + `.md` download
+- Prioritization button → TAM/SAM/SOM scoring + `.md` download
 
-### 2. 💻 CLI — Modo interativo
+### 2. 💻 CLI — Interactive mode
 
 ```bash
 python agent_innovation.py
 ```
 
-### 3. 🔄 CLI — Modo batch
+### 3. 🔄 CLI — Batch mode
 
 ```python
 from agent_innovation import avaliar_lista
@@ -175,7 +175,7 @@ avaliar_lista([
 ✅ Arquivo salvo: radar_quickpose.ai_20250627_1430.md
 ```
 
-### Arquivo gerado
+### Generated file
 
 ```
 radar_technology_name_YYYYMMDD_HHMM.md
@@ -183,87 +183,87 @@ radar_technology_name_YYYYMMDD_HHMM.md
 
 ---
 
-## 🔬 Como funciona (técnico)
+## 🔬 How it works (technical)
 
 ### Pipeline
 
-1. **Validação** — HEAD request na URL âncora para verificar acessibilidade
-2. **Scraping** — BeautifulSoup extrai texto limpo (max 6.000 chars)
-3. **Contexto** — Carrega 8 documentos `.docx` do processo de inovação (~16.500 chars)
-4. **Análise** — Claude recebe tudo + faz até 5 buscas web automáticas via Tool Use
-5. **Filtragem** — Regex remove linhas de raciocínio intermediário do Claude
-6. **Cache** — Resultado salvo em JSON (hash MD5 de nome+url como chave)
+1. **Validation** — HEAD request to check anchor URL accessibility
+2. **Scraping** — BeautifulSoup extracts clean text (max 6,000 chars)
+3. **Context** — Loads 8 innovation process `.docx` documents (~16,500 chars)
+4. **Analysis** — Claude receives everything + performs up to 5 automatic web searches via Tool Use
+5. **Filtering** — Regex removes Claude's intermediate reasoning lines
+6. **Cache** — Result saved as JSON (MD5 hash of name+url as key)
 
 ### Stack
 
-| Tecnologia | Uso |
-|-----------|-----|
-| Claude API (Anthropic) | LLM + web search nativo via Tool Use |
-| BeautifulSoup | Scraping da URL âncora |
-| python-docx | Leitura dos documentos de processo |
-| Streamlit | Interface web |
-| python-dotenv | Gerenciamento de variáveis de ambiente |
-| hashlib + JSON | Sistema de cache local |
+| Technology | Usage |
+|-----------|-------|
+| Claude API (Anthropic) | LLM + native web search via Tool Use |
+| BeautifulSoup | Anchor URL scraping |
+| python-docx | Process document reading |
+| Streamlit | Web interface |
+| python-dotenv | Environment variable management |
+| hashlib + JSON | Local cache system |
 
 ---
 
-## 📁 Estrutura do projeto
+## 📁 Project structure
 
 ```
 agent_innovation/
-├── agent_innovation.py       # Agente principal (análise + priorização)
-├── app.py                    # Interface Streamlit
-├── requirements.txt          # Dependências
-├── .env                      # API key (não versionado)
-├── .gitignore                # Ignora .env, cache/, .venv/, *.md gerados
-├── cache/                    # Cache JSON das avaliações
-└── README.md                 # Este arquivo
+├── agent_innovation.py       # Main agent (analysis + prioritization)
+├── app.py                    # Streamlit interface
+├── requirements.txt          # Dependencies
+├── .env                      # API key (not versioned)
+├── .gitignore                # Ignores .env, cache/, .venv/, generated *.md
+├── cache/                    # JSON cache of evaluations
+└── README.md                 # This file
 ```
 
 ---
 
-## 💡 Dicas de uso
+## 💡 Usage tips
 
-| Dica | Por quê |
-|------|---------|
-| 🔗 Sempre forneça URL âncora | Mais contexto = avaliação mais precisa |
-| 📄 Mantenha os `.docx` atualizados | São a referência de critérios do processo |
-| 💰 Use Haiku para exploração | ~$0.05/avaliação vs ~$0.34 com Sonnet |
-| 🔄 Limpe o cache se precisar reavaliar | Delete o `.json` correspondente em `cache/` |
-| 📊 Só priorize o que passou na triagem | Priorização usa a triagem como input |
-
----
-
-## ⚠️ Limitações
-
-- 🤖 **Resultados gerados por IA** — revisar antes de usar em decisões
-- 🌐 Web search depende da disponibilidade da API da Anthropic
-- 📄 Documentos `.docx` são lidos como texto puro (sem formatação/tabelas)
-- 💰 Cada avaliação consome créditos da API (~$0.05 com Haiku)
-- 🔒 Path dos documentos está hardcoded para o ambiente local
+| Tip | Why |
+|-----|-----|
+| 🔗 Always provide an anchor URL | More context = more accurate evaluation |
+| 📄 Keep `.docx` files updated | They are the process criteria reference |
+| 💰 Use Haiku for exploration | ~$0.05/eval vs ~$0.34 with Sonnet |
+| 🔄 Clear cache to re-evaluate | Delete the corresponding `.json` in `cache/` |
+| 📊 Only prioritize what passed triage | Prioritization uses triage as input |
 
 ---
 
-## 🏢 Sobre
+## ⚠️ Limitations
 
-Projeto em **testes internos na [Namu](https://namu.com.br)** — plataforma brasileira de saúde e bem-estar.
-
-- 🤖 **Powered by Claude** — Anthropic API com web search nativo
-- 🇧🇷 **Código e output em português** — variáveis, prompts, templates e resultados em pt-BR
-- 💻 **Roda em qualquer computador** — sem necessidade de GPU
-- 📦 **Cache inteligente** — não reprocessa avaliações já feitas
+- 🤖 **AI-generated results** — review before using in decisions
+- 🌐 Web search depends on Anthropic API availability
+- 📄 `.docx` documents are read as plain text (no formatting/tables)
+- 💰 Each evaluation consumes API credits (~$0.05 with Haiku)
+- 🔒 Document path is hardcoded to the local environment
 
 ---
 
-## 📚 Referências
+## 🏢 About
+
+Project under **internal testing at [Namu](https://namu.com.br)** — a Brazilian health & wellness platform.
+
+- 🤖 **Powered by Claude** — Anthropic API with native web search
+- 🇧🇷 **Code and output in Portuguese** — variables, prompts, templates and results in pt-BR
+- 💻 **Runs on any computer** — no GPU required
+- 📦 **Smart cache** — doesn't reprocess completed evaluations
+
+---
+
+## 📚 References
 
 - [Anthropic API Docs](https://docs.anthropic.com/) — Claude models + Tool Use
-- [Streamlit](https://streamlit.io/) — Framework de UI para data apps
+- [Streamlit](https://streamlit.io/) — UI framework for data apps
 - [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) — HTML parsing
-- [python-docx](https://python-docx.readthedocs.io/) — Leitura de arquivos .docx
+- [python-docx](https://python-docx.readthedocs.io/) — .docx file reading
 
 ---
 
 <p align="center">
-  Feito com 🔭 por <a href="https://namu.com.br">Namu</a>
+  Made with 🔭 by <a href="https://namu.com.br">Namu</a>
 </p>
