@@ -11,9 +11,9 @@ from agent_innovation import (
     DOCUMENTOS_PROCESSO, MODELO_TRIAGEM, MODELO_MAPEAMENTO, CUSTOS
 )
 
-st.set_page_config(page_title="Radar Tecnológico — Namu", page_icon="🔭")
+st.set_page_config(page_title="Esteira de Inovação — Namu", page_icon="🔭")
 
-st.title("🔭 Radar Tecnológico — Namu")
+st.title("🔭 Esteira de Inovação — Namu")
 st.caption(f"Triagem: `{MODELO_TRIAGEM}` · Mapeamento: `{MODELO_MAPEAMENTO}` · Web Search ativo")
 
 if DOCUMENTOS_PROCESSO:
@@ -21,9 +21,54 @@ if DOCUMENTOS_PROCESSO:
 
 st.divider()
 
-aba_triagem, aba_mapeamento = st.tabs(["🔍 Triagem", "🗺️ Mapeamento"])
+aba_mapeamento, aba_triagem = st.tabs(["🗺️ Mapeamento", "🔍 Triagem"])
 
-# ── Aba 1: Triagem ──
+# ── Aba 1: Mapeamento ──
+with aba_mapeamento:
+    st.caption("Busca tecnologias open-source testáveis por categoria via Claude + Web Search.")
+
+    categoria = st.text_input(
+        "Categoria",
+        placeholder="Ex: rPPG, skin lesion detection deep learning, food recognition"
+    )
+
+    if categoria:
+        cached_map = cache_get(f"map|{categoria}", "")
+        if cached_map:
+            st.info("📦 Mapeamento em cache — sem custo.")
+        else:
+            custos_haiku = CUSTOS[MODELO_MAPEAMENTO]
+            custo_map = round(
+                (2000 / 1_000_000) * custos_haiku["input"]
+                + (2000 / 1_000_000) * custos_haiku["output"]
+                + 0.10 * 3, 2
+            )
+            st.caption(f"💰 Custo estimado: **${custo_map:.2f}** ({MODELO_MAPEAMENTO} · ~3 buscas web)")
+
+    if st.button("🗺️ Mapear", disabled=not categoria, type="primary"):
+        with st.spinner("Claude buscando tecnologias open-source..."):
+            resultado_map = mapear_tecnologias(categoria)
+        st.session_state["resultado_mapeamento"] = resultado_map
+        st.session_state["categoria_map"] = categoria
+
+    if "resultado_mapeamento" in st.session_state:
+        st.divider()
+        st.subheader(f"🗺️ Mapeamento: {st.session_state['categoria_map']}")
+        st.markdown(st.session_state["resultado_mapeamento"])
+
+        nome_map = (
+            f"mapeamento_{st.session_state['categoria_map'].lower().replace(' ', '_')}_"
+            f"{datetime.now().strftime('%Y%m%d_%H%M')}.md"
+        )
+        st.download_button(
+            "💾 Baixar mapeamento .md",
+            data=f"# Mapeamento Open-Source — {st.session_state['categoria_map']}\n\n"
+                 + st.session_state["resultado_mapeamento"],
+            file_name=nome_map,
+            mime="text/markdown",
+        )
+
+# ── Aba 2: Triagem ──
 with aba_triagem:
     nome = st.text_input("Nome da tecnologia", placeholder="Ex: QuickPose.ai")
     url_ancora = st.text_input("URL âncora (opcional)", placeholder="https://...")
@@ -82,50 +127,5 @@ with aba_triagem:
             "💾 Baixar triagem .md",
             data=cabecalho + st.session_state["resultado_triagem"],
             file_name=nome_md,
-            mime="text/markdown",
-        )
-
-# ── Aba 2: Mapeamento ──
-with aba_mapeamento:
-    st.caption("Busca tecnologias open-source testáveis por categoria via Claude + Web Search.")
-
-    categoria = st.text_input(
-        "Categoria",
-        placeholder="Ex: rPPG, facial analysis SDK, food recognition"
-    )
-
-    if categoria:
-        cached_map = cache_get(f"map|{categoria}", "")
-        if cached_map:
-            st.info("📦 Mapeamento em cache — sem custo.")
-        else:
-            custos_haiku = CUSTOS[MODELO_MAPEAMENTO]
-            custo_map = round(
-                (2000 / 1_000_000) * custos_haiku["input"]
-                + (2000 / 1_000_000) * custos_haiku["output"]
-                + 0.10 * 3, 2
-            )
-            st.caption(f"💰 Custo estimado: **${custo_map:.2f}** ({MODELO_MAPEAMENTO} · ~3 buscas web)")
-
-    if st.button("🗺️ Mapear", disabled=not categoria, type="primary"):
-        with st.spinner("Claude buscando tecnologias open-source..."):
-            resultado_map = mapear_tecnologias(categoria)
-        st.session_state["resultado_mapeamento"] = resultado_map
-        st.session_state["categoria_map"] = categoria
-
-    if "resultado_mapeamento" in st.session_state:
-        st.divider()
-        st.subheader(f"🗺️ Mapeamento: {st.session_state['categoria_map']}")
-        st.markdown(st.session_state["resultado_mapeamento"])
-
-        nome_map = (
-            f"mapeamento_{st.session_state['categoria_map'].lower().replace(' ', '_')}_"
-            f"{datetime.now().strftime('%Y%m%d_%H%M')}.md"
-        )
-        st.download_button(
-            "💾 Baixar mapeamento .md",
-            data=f"# Mapeamento Open-Source — {st.session_state['categoria_map']}\n\n"
-                 + st.session_state["resultado_mapeamento"],
-            file_name=nome_map,
             mime="text/markdown",
         )
