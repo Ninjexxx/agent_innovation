@@ -27,20 +27,16 @@ Agent Innovation is an AI agent that evaluates technologies for Namu's innovatio
 **One call. Full evaluation. No copy-paste.**
 
 ```
-Technology + Anchor URL
-         ↓
-  URL Reading (BeautifulSoup)
-         ↓
-  Process Documents (.docx)
-         ↓
-  Claude + Web Search (up to 5 searches)
+Technology + Anchor URL           Category (e.g. "rPPG")
+         ↓                                 ↓
+  URL Reading (BeautifulSoup)     Claude + Web Search
+         ↓                                 ↓
+  Process Documents (.docx)       Open-source tech list
+         ↓                                 ↓
+  Claude + Web Search             Top 3 recommendations
          ↓
   ┌──────────────────────────────────┐
   │  Triage (structured template)    │
-  └──────────────────────────────────┘
-         ↓
-  ┌──────────────────────────────────┐
-  │  Prioritization (TAM/SAM/SOM)   │
   └──────────────────────────────────┘
          ↓
   Markdown (.md) + JSON Cache
@@ -52,9 +48,15 @@ Technology + Anchor URL
 
 | Stage | Description | Web Search |
 |-------|-------------|:----------:|
+| 🗺️ Mapping | Discovers open-source technologies by category | ✅ Yes (up to 5) |
 | 🔍 Triage | Identification, entry criteria, maturity, cost, complexity, decision | ✅ Yes (up to 5) |
-| 📊 Prioritization | TAM/SAM/SOM score + business framework (6 categories) | ❌ No |
 | 💾 Cache | Results saved as JSON — reprocessing at zero cost | — |
+
+### Mapping Output
+
+- Table with name, repo link, description, stars, last activity, language
+- Top 3 recommendations for immediate triage
+- Only open-source, testable projects (libraries, frameworks, SDKs, models)
 
 ### Triage Template
 
@@ -62,12 +64,6 @@ Technology + Anchor URL
 - Radar entry criteria (strategic impact, data generation, scalability)
 - Triage (pain point, maturity, cost estimate, technical complexity)
 - Triage decision (advance / observe / discard)
-
-### Prioritization Template
-
-- TAM/SAM/SOM score with weights (30%/40%/30%)
-- Business framework: Benchmark, Differentiation, Quality, Productivity, Flexibility, Efficiency
-- Strategic conclusion
 
 ---
 
@@ -78,7 +74,7 @@ Technology + Anchor URL
 | `claude-haiku-4-5-20251001` (default) | **~$0.05** | Good |
 | `claude-sonnet-4-20250514` | ~$0.34 | High |
 
-> Prioritization costs ~$0.01 extra (no web search).
+> Mapping costs ~$0.05 per category search.
 
 ---
 
@@ -129,12 +125,9 @@ ANTHROPIC_API_KEY=sk-ant-your-key-here
 streamlit run app.py
 ```
 
-Opens a dashboard with:
-- Name + URL inputs
-- Cache indicator and URL validation
-- Cost estimate before running
-- Triage button → rendered result + `.md` download
-- Prioritization button → TAM/SAM/SOM scoring + `.md` download
+Opens a dashboard with two tabs:
+- **Triage** — Name + URL inputs, cache indicator, URL validation, cost estimate, evaluate button, `.md` download
+- **Mapping** — Category input, discovers open-source technologies, `.md` download
 
 ### 2. 💻 CLI — Interactive mode
 

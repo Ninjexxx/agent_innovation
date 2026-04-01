@@ -3,10 +3,9 @@ Agent Innovation — Radar Tecnológico Namu
 ==========================================
 Agente de IA que avalia tecnologias para o radar de inovação da Namu.
 
-  1. Recebe nome da tecnologia + URL âncora
-  2. Lê documentos internos de processo como referência
-  3. Claude faz buscas web adicionais via ferramenta nativa
-  4. Preenche template estruturado de avaliação
+Dois fluxos independentes:
+  1. Triagem: nome + URL âncora → template estruturado (Sonnet)
+  2. Mapeamento: categoria → lista de tecnologias open-source (Haiku)
 
 Pré-requisitos:
     pip install -r requirements.txt
@@ -33,8 +32,9 @@ from docx import Document
 load_dotenv()
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# Modelo: troque para "claude-sonnet-4-20250514" se quiser mais qualidade
-MODELO = "claude-haiku-4-5-20251001"
+# Modelos disponíveis
+MODELO_MAPEAMENTO = "claude-haiku-4-5-20251001"     # mapeamento = Haiku (barato)
+MODELO_TRIAGEM = "claude-sonnet-4-20250514"          # triagem = Sonnet (qualidade)
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
 
@@ -201,63 +201,6 @@ TEMPLATE = """
 """
 
 
-TEMPLATE_PRIORIZACAO = """
-## SCORE TAM/SAM/SOM
-
-| Critério | Peso | Nota (1-5) |
-|---|---|---|
-| TAM Tecnológico | 30% | [nota] |
-| SAM (Fit de Mercado) | 40% | [nota] |
-| SOM (Viabilidade) | 30% | [nota] |
-
-**Prioridade Namu = (TAM x 0.3) + (SAM x 0.4) + (SOM x 0.3) = [calcular]**
-
-**TAM:** Transformacional para a empresa.
-[Explique]
-
-**SAM:** Alta aderência à demanda do mercado.
-[Explique]
-
-**SOM:** Tecnologicamente viável de integrar e escalar.
-[Explique]
-
----
-
-## FRAMEWORK DE NEGÓCIOS
-
-⬜ Benchmark (Iniciativas de Mercado)
-⬜ Diferenciação (Vendas)
-⬜ Qualidade (Evolução do que já existe)
-⬜ Produtividade (Eficiência Operacional)
-⬜ Flexibilidade (Integração e Evolução)
-⬜ Eficiência (Otimização de Custos)
-
-**Benchmark (Iniciativas de Mercado)**
-[Explique]
-
-**Diferenciação (Vendas)**
-[Explique]
-
-**Qualidade (Evolução do que já existe)**
-[Explique]
-
-**Produtividade (Eficiência Operacional)**
-[Explique]
-
-**Flexibilidade (Integração e Evolução)**
-[Explique]
-
-**Eficiência (Otimização de Custos)**
-[Explique]
-
----
-
-## CONCLUSÃO
-
-[Conclusão estratégica objetiva para a Namu]
-"""
-
-
 # ─────────────────────────────────────────
 # 1. CACHE
 # ─────────────────────────────────────────
@@ -306,22 +249,21 @@ def validar_url(url: str) -> tuple[bool, str]:
 # 3. ESTIMATIVA DE CUSTO
 # ─────────────────────────────────────────
 
-def estimar_custo(nome: str, url_ancora: str = "") -> dict:
+def estimar_custo(nome: str, url_ancora: str = "", modelo: str = MODELO_TRIAGEM) -> dict:
     """Estima custo da avaliação antes de rodar."""
-    # Estima tokens de input
     chars_prompt = (
         len(CONTEXTO_NAMU) + len(TEMPLATE) + len(DOCUMENTOS_PROCESSO)
-        + len(nome) + 500  # instruções fixas
+        + len(nome) + 500
     )
     if url_ancora:
-        chars_prompt += 6000  # max_chars da URL
-    tokens_input = chars_prompt // 4  # ~4 chars por token
-    tokens_output = 4000  # estimativa do template preenchido
+        chars_prompt += 6000
+    tokens_input = chars_prompt // 4
+    tokens_output = 4000
 
-    custos = CUSTOS.get(MODELO, CUSTOS["claude-haiku-4-5-20251001"])
+    custos = CUSTOS.get(modelo, CUSTOS["claude-haiku-4-5-20251001"])
     custo_input = (tokens_input / 1_000_000) * custos["input"]
     custo_output = (tokens_output / 1_000_000) * custos["output"]
-    custo_search = CUSTO_WEB_SEARCH * 3  # média de 3 buscas
+    custo_search = CUSTO_WEB_SEARCH * 3
 
     total = custo_input + custo_output + custo_search
 
@@ -370,30 +312,28 @@ def ler_url(url: str, max_chars: int = 6000) -> str:
 
 
 # ─────────────────────────────────────────
-# 5. ANÁLISE HÍBRIDA VIA CLAUDE
+# 5. TRIAGEM VIA CLAUDE
 # ─────────────────────────────────────────
 
-def analisar_tecnologia(nome: str, url_ancora: str = "") -> str:
+def analisar_tecnologia(nome: str, url_ancora: str = "", modelo: str = MODELO_TRIAGEM) -> str:
     """
     Claude recebe a URL âncora + faz buscas web adicionais automaticamente.
     Ao final preenche o template completo.
     """
-    # Verifica cache
     cached = cache_get(nome, url_ancora)
     if cached:
         print("\n✅ Resultado encontrado no cache (sem custo)")
         return cached
 
     print("\n🧠 Claude analisando com busca web + URL âncora...")
+    print(f"   🤖 Modelo: {modelo}")
 
-    # Lê a URL âncora se fornecida
     conteudo_ancora = ""
     if url_ancora:
         print(f"   📖 Lendo URL âncora: {url_ancora}")
         conteudo_ancora = ler_url(url_ancora)
         print("   ✓ URL lida")
 
-    # Monta o prompt
     ancora_texto = (
         f"\n\nCONTEÚDO DA URL ÂNCORA ({url_ancora}):\n{conteudo_ancora}"
         if conteudo_ancora else ""
@@ -403,7 +343,6 @@ def analisar_tecnologia(nome: str, url_ancora: str = "") -> str:
         data_hoje=datetime.now().strftime("%d/%m/%Y")
     )
 
-    # Monta bloco de documentos de processo (se disponível)
     docs_texto = ""
     if DOCUMENTOS_PROCESSO:
         docs_texto = (
@@ -445,19 +384,17 @@ INSTRUÇÕES DE PREENCHIMENTO:
 TEMPLATE:
 {template_preenchido}"""
 
-    # Chama Claude com web search nativo
     resposta = client.messages.create(
-        model=MODELO,
+        model=modelo,
         max_tokens=16000,
         tools=[{
             "type": "web_search_20250305",
             "name": "web_search",
-            "max_uses": 5  # até 5 buscas automáticas por análise
+            "max_uses": 5
         }],
         messages=[{"role": "user", "content": prompt}]
     )
 
-    # Extrai todos os blocos de texto e filtra raciocínio intermediário
     partes_texto = []
     buscas_feitas = 0
 
@@ -472,7 +409,6 @@ TEMPLATE:
     print(f"   ✓ {buscas_feitas} buscas realizadas pelo Claude")
     print("   ✓ Template preenchido")
 
-    # Junta tudo e remove linhas de raciocínio do Claude
     texto_completo = "\n".join(partes_texto)
     linhas = texto_completo.split("\n")
     linhas_filtradas = [
@@ -486,65 +422,95 @@ TEMPLATE:
 
     resultado = "\n".join(linhas_filtradas).strip()
 
-    # Salva no cache
     cache_set(nome, url_ancora, resultado)
 
     return resultado
 
 
 # ─────────────────────────────────────────
-# 5b. PRIORIZAÇÃO (SCORING)
+# 5b. MAPEAMENTO DE TECNOLOGIAS OPEN-SOURCE
 # ─────────────────────────────────────────
 
-def priorizar_tecnologia(nome: str, resultado_triagem: str) -> str:
+def mapear_tecnologias(categoria: str) -> str:
     """
-    Etapa 2: Recebe o resultado da triagem e gera o scoring TAM/SAM/SOM
-    + framework de negócios. Sem web search (usa só a triagem como input).
+    Claude busca tecnologias open-source testáveis por categoria.
+    Usa Haiku (barato) — mapeamento não precisa de qualidade máxima.
     """
-    # Cache separado pra priorização
-    cache_key_prio = f"prio|{nome}"
-    cached = cache_get(cache_key_prio, "")
+    cache_key_map = f"map|{categoria}"
+    cached = cache_get(cache_key_map, "")
     if cached:
-        print("\n✅ Priorização encontrada no cache (sem custo)")
+        print("\n✅ Mapeamento encontrado no cache (sem custo)")
         return cached
 
-    print("\n📊 Claude gerando scoring de priorização...")
+    print(f"\n🗺️ Claude mapeando tecnologias open-source em '{categoria}'...")
+    print(f"   🤖 Modelo: {MODELO_MAPEAMENTO}")
 
-    prompt = f"""Você é um analista sênior de inovação tecnológica.
+    prompt = f"""Você é um analista sênior de inovação tecnológica em uma empresa de health-tech brasileira.
 
 CONTEXTO DA EMPRESA:
 {CONTEXTO_NAMU}
 
-RESULTADO DA TRIAGEM (já realizada):
-{resultado_triagem}
-
 SUA TAREFA:
-Com base EXCLUSIVAMENTE na triagem acima, preencha o template de priorização abaixo.
+Busque e liste tecnologias OPEN-SOURCE relevantes na categoria: "{categoria}"
 
-REGRAS DE SCORING:
-- TAM (peso 30%): 5 = muda o jogo da empresa / 1 = melhoria mínima
-- SAM (peso 40%): 5 = desejo direto do cliente / 1 = pouco interesse
-- SOM (peso 30%): 5 = fácil de empacotar (API/Doc) / 1 = muito complexo
-- Calcule: (TAM x 0.3) + (SAM x 0.4) + (SOM x 0.3) = Prioridade Namu
-- Para checkboxes (⬜), marque com ✅ os que se aplicam
-- Seja objetivo e estratégico, baseado nos dados da triagem
-- NÃO invente dados que não estão na triagem
+REGRAS OBRIGATÓRIAS:
+- SOMENTE tecnologias open-source (GitHub, HuggingFace, GitLab, etc.)
+- SOMENTE projetos que podem ser clonados, testados e avaliados localmente
+- NÃO inclua SaaS, APIs pagas, produtos comerciais ou empresas
+- Foque em: bibliotecas, frameworks, SDKs, modelos, ferramentas de linha de comando
+- Priorize projetos com boa documentação, stars e atividade recente
 
-TEMPLATE:
-{TEMPLATE_PRIORIZACAO}"""
+Para cada tecnologia encontrada, preencha:
+
+| # | Nome | Repo/Link | Descrição (1 linha) | Stars | Última atividade | Linguagem | Por que avaliar |
+|---|------|-----------|---------------------|-------|-----------------|-----------|----------------|
+
+Após a tabela, adicione:
+
+**Top 3 para triagem imediata:**
+1. [nome] — [justificativa em 1 linha]
+2. [nome] — [justificativa em 1 linha]
+3. [nome] — [justificativa em 1 linha]
+
+Seja objetivo. Dados reais. Sem inventar repos ou stars."""
 
     resposta = client.messages.create(
-        model=MODELO,
+        model=MODELO_MAPEAMENTO,
         max_tokens=4000,
+        tools=[{
+            "type": "web_search_20250305",
+            "name": "web_search",
+            "max_uses": 5
+        }],
         messages=[{"role": "user", "content": prompt}]
     )
 
-    resultado = resposta.content[0].text.strip()
+    partes_texto = []
+    buscas_feitas = 0
+    for bloco in resposta.content:
+        if bloco.type == "text":
+            partes_texto.append(bloco.text)
+        elif bloco.type == "server_tool_use":
+            buscas_feitas += 1
+            query = getattr(bloco.input, "query", "")
+            print(f"   🔍 Busca {buscas_feitas}: {query}")
 
-    # Salva no cache
-    cache_set(cache_key_prio, "", resultado)
+    print(f"   ✓ {buscas_feitas} buscas realizadas")
 
-    print("   ✓ Scoring preenchido")
+    texto_completo = "\n".join(partes_texto)
+    linhas = texto_completo.split("\n")
+    linhas_filtradas = [
+        l for l in linhas
+        if not re.match(
+            r'^(Vou |Agora vou |Deixe-me |Deixa eu |Let me |Now I|'
+            r'Com base |Preciso |Vamos |Buscando |Pesquisando )',
+            l.strip()
+        )
+    ]
+    resultado = "\n".join(linhas_filtradas).strip()
+
+    cache_set(cache_key_map, "", resultado)
+    print("   ✓ Mapeamento concluído")
     return resultado
 
 
@@ -552,7 +518,7 @@ TEMPLATE:
 # 6. SALVAR DOCUMENTO
 # ─────────────────────────────────────────
 
-def salvar_documento(nome: str, conteudo: str) -> str:
+def salvar_documento(nome: str, conteudo: str, modelo: str = MODELO_TRIAGEM) -> str:
     nome_arquivo = (
         f"radar_{nome.lower().replace(' ', '_')}_"
         f"{datetime.now().strftime('%Y%m%d_%H%M')}.md"
@@ -560,7 +526,7 @@ def salvar_documento(nome: str, conteudo: str) -> str:
     cabecalho = (
         f"# Radar Tecnológico — {nome}\n"
         f"*Gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')} "
-        f"via Claude Sonnet 4 + Web Search*\n"
+        f"via {modelo} + Web Search*\n"
         f"*Revisar antes de usar*\n\n---\n\n"
     )
     with open(nome_arquivo, "w", encoding="utf-8") as f:
@@ -577,7 +543,7 @@ def avaliar_tecnologia(nome: str = "", url_ancora: str = ""):
     if not nome:
         print("\n" + "="*52)
         print("  RADAR TECNOLÓGICO — NAMU")
-        print(f"  {MODELO} + Web Search nativo")
+        print(f"  {MODELO_TRIAGEM} + Web Search nativo")
         print("="*52)
         nome = input("\nNome da tecnologia: ").strip()
         url_ancora = input(
@@ -604,6 +570,22 @@ def avaliar_tecnologia(nome: str = "", url_ancora: str = ""):
     print("   3. Cole no seu Google Doc")
 
     return documento, arquivo
+
+
+# ─────────────────────────────────────────
+# MODO MAPEAMENTO (CLI)
+# ─────────────────────────────────────────
+
+def mapear_cli():
+    print("\n" + "="*52)
+    print("  MAPEAMENTO DE TECNOLOGIAS OPEN-SOURCE")
+    print("="*52)
+    categoria = input("\nCategoria (ex: rPPG, facial analysis, food recognition): ").strip()
+    if not categoria:
+        print("❌ Categoria é obrigatória.")
+        return
+    resultado = mapear_tecnologias(categoria)
+    print("\n" + resultado)
 
 
 # ─────────────────────────────────────────
