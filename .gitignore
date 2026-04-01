@@ -3,4 +3,6 @@
 __pycache__/
 *.pyc
 radar_*.md
+mapeamento_*.md
+scoring_*.md
 cache/
