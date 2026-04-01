@@ -382,7 +382,18 @@ INSTRUÇÕES DE PREENCHIMENTO:
 - Baseie-se SOMENTE em fatos encontrados nas buscas web e na URL âncora
 
 TEMPLATE:
-{template_preenchido}"""
+{template_preenchido}
+
+Ao final do template preenchido, adicione obrigatoriamente:
+
+---
+
+**Fontes consultadas:**
+- [URL 1] — [o que encontrou nesta fonte]
+- [URL 2] — [o que encontrou nesta fonte]
+- [URL N] — [o que encontrou nesta fonte]
+
+REGRA: NÃO faça perguntas ao usuário — este é um relatório final."""
 
     resposta = client.messages.create(
         model=modelo,
@@ -459,20 +470,37 @@ REGRAS OBRIGATÓRIAS:
 - NÃO inclua SaaS, APIs pagas, produtos comerciais ou empresas
 - Foque em: bibliotecas, frameworks, SDKs, modelos, ferramentas de linha de comando
 - Priorize projetos com boa documentação, stars e atividade recente
+- Inclua datasets open-source relevantes se existirem na categoria
 
-Para cada tecnologia encontrada, preencha:
+FORMATO OBRIGATÓRIO (não altere a estrutura):
+
+Preencha a tabela abaixo com TODOS os projetos encontrados. Cada linha DEVE ter o link real do repositório:
 
 | # | Nome | Repo/Link | Descrição (1 linha) | Stars | Última atividade | Linguagem | Por que avaliar |
 |---|------|-----------|---------------------|-------|-----------------|-----------|----------------|
+| 1 | [nome] | [URL real do repo] | [descrição] | [número ou ~estimativa] | [ano] | [lang] | [1 linha] |
 
-Após a tabela, adicione:
+Após a tabela:
 
 **Top 3 para triagem imediata:**
 1. [nome] — [justificativa em 1 linha]
 2. [nome] — [justificativa em 1 linha]
 3. [nome] — [justificativa em 1 linha]
 
-Seja objetivo. Dados reais. Sem inventar repos ou stars."""
+---
+
+**Fontes consultadas:**
+- [URL 1] — [o que encontrou]
+- [URL 2] — [o que encontrou]
+- [URL N] — [o que encontrou]
+
+REGRAS DE FORMATO:
+- SEMPRE use a tabela markdown acima, mesmo que os dados sejam parciais
+- SEMPRE inclua links reais (URLs completas) — nunca omita
+- Se não encontrar stars exatas, escreva "~estimativa" ou "N/D"
+- NÃO faça perguntas ao usuário — este é um relatório final
+- NÃO mude o formato da tabela nem substitua por texto corrido
+- Seja objetivo. Dados reais. Sem inventar repos ou stars."""
 
     resposta = client.messages.create(
         model=MODELO_MAPEAMENTO,
