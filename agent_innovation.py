@@ -14,7 +14,8 @@ Configuração:
     Crie .env com: ANTHROPIC_API_KEY=sk-ant-...
 
 Como usar:
-    python agent_innovation.py
+    streamlit run app.py          (interface web)
+    python agent_innovation.py    (CLI interativo)
 """
 
 import os
@@ -32,68 +33,26 @@ from docx import Document
 load_dotenv()
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-# Modelos disponíveis
-MODELO_MAPEAMENTO = "claude-haiku-4-5-20251001"     # mapeamento = Haiku (barato)
-MODELO_TRIAGEM = "claude-sonnet-4-20250514"          # triagem = Sonnet (qualidade)
-
+MODELO_MAPEAMENTO = "claude-haiku-4-5-20251001"
+MODELO_TRIAGEM = "claude-sonnet-4-20250514"
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+DOCS_PATH = r"C:\Users\Arthur Santos\Documents\0. Processo de Inovação"
+CUSTO_WEB_SEARCH = 0.10
 
-# Custos por 1M tokens (USD)
 CUSTOS = {
     "claude-haiku-4-5-20251001":  {"input": 0.80, "output": 4.00},
     "claude-sonnet-4-20250514":   {"input": 3.00, "output": 15.00},
 }
-CUSTO_WEB_SEARCH = 0.10  # por busca
 
-# ─────────────────────────────────────────
-# 0. LEITURA DOS DOCUMENTOS DE PROCESSO
-# ─────────────────────────────────────────
-
-DOCS_PATH = r"C:\Users\Arthur Santos\Documents\0. Processo de Inovação"
-
-
-def carregar_documentos_processo(max_chars_por_doc: int = 3000) -> str:
-    """Lê os .docx de processo de inovação como contexto de referência."""
-    arquivos = sorted(glob.glob(os.path.join(DOCS_PATH, "*.docx")))
-    if not arquivos:
-        return ""
-
-    partes = []
-    for arq in arquivos:
-        try:
-            doc = Document(arq)
-            texto = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-            nome = os.path.basename(arq)
-            partes.append(f"--- {nome} ---\n{texto[:max_chars_por_doc]}")
-        except Exception:
-            continue
-
-    return "\n\n".join(partes)
+def _carregar_contexto() -> str:
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contexto_namu.txt")
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return ""
 
 
-# Carrega uma vez na inicialização
-DOCUMENTOS_PROCESSO = carregar_documentos_processo()
-
-# ─────────────────────────────────────────
-# CONTEXTO DA NAMU
-# ─────────────────────────────────────────
-
-CONTEXTO_NAMU = """
-A Namu é uma empresa brasileira de health-tech focada em produto digital.
-Produtos atuais:
-- VitalScan: escaneamento facial para obtenção de dados de saúde
-- FoodScan: análise de prato e cálculo de calorias via imagem
-
-Stack e contexto técnico: produto mobile/web, dados de saúde, computer vision, IA aplicada.
-Momento estratégico: expansão de capacidades de dados, escalabilidade de plataforma,
-criação de ativos proprietários e movimentos de phygital/lifestyle.
-
-Ao analisar tecnologias:
-- Seja objetivo e estrategista, não genérico
-- Não force conexão com VitalScan ou FoodScan — são apenas referência de contexto
-- Foque no potencial estratégico real, não em buzzwords de saúde
-- Pense como um analista sênior de inovação, não como um entusiasta de tecnologia
-"""
+CONTEXTO_NAMU = _carregar_contexto()
 
 TEMPLATE = """
 ## IDENTIFICAÇÃO DA TECNOLOGIA
@@ -200,10 +159,34 @@ TEMPLATE = """
 [objetivo, estratégico, específico para a Namu]
 """
 
+REGEX_RACIOCINIO = re.compile(
+    r'^(Vou |Agora vou |Deixe-me |Deixa eu |Let me |Now I|'
+    r'Com base |Preciso |Vamos |Buscando |Pesquisando )'
+)
 
-# ─────────────────────────────────────────
-# 1. CACHE
-# ─────────────────────────────────────────
+
+def carregar_documentos_processo(max_chars_por_doc: int = 3000) -> str:
+    """Lê os .docx de processo de inovação como contexto de referência."""
+    arquivos = sorted(glob.glob(os.path.join(DOCS_PATH, "*.docx")))
+    if not arquivos:
+        return ""
+
+    partes = []
+    for arq in arquivos:
+        try:
+            doc = Document(arq)
+            texto = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+            partes.append(f"--- {os.path.basename(arq)} ---\n{texto[:max_chars_por_doc]}")
+        except Exception:
+            continue
+
+    return "\n\n".join(partes)
+
+
+DOCUMENTOS_PROCESSO = carregar_documentos_processo()
+
+
+# ── Cache ──
 
 def _cache_key(nome: str, url: str) -> str:
     raw = f"{nome.lower().strip()}|{url.strip()}"
@@ -212,11 +195,10 @@ def _cache_key(nome: str, url: str) -> str:
 
 def cache_get(nome: str, url: str) -> str | None:
     path = os.path.join(CACHE_DIR, f"{_cache_key(nome, url)}.json")
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data.get("resultado")
-    return None
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f).get("resultado")
 
 
 def cache_set(nome: str, url: str, resultado: str):
@@ -227,12 +209,10 @@ def cache_set(nome: str, url: str, resultado: str):
                    "data": datetime.now().isoformat()}, f, ensure_ascii=False)
 
 
-# ─────────────────────────────────────────
-# 2. VALIDAÇÃO DE URL
-# ─────────────────────────────────────────
+# ── Utilitários ──
 
 def validar_url(url: str) -> tuple[bool, str]:
-    """Testa se a URL é acessível. Retorna (ok, mensagem)."""
+    """Testa se a URL é acessível."""
     if not url:
         return True, ""
     try:
@@ -245,16 +225,9 @@ def validar_url(url: str) -> tuple[bool, str]:
         return False, f"URL inacessível: {e}"
 
 
-# ─────────────────────────────────────────
-# 3. ESTIMATIVA DE CUSTO
-# ─────────────────────────────────────────
-
 def estimar_custo(nome: str, url_ancora: str = "", modelo: str = MODELO_TRIAGEM) -> dict:
     """Estima custo da avaliação antes de rodar."""
-    chars_prompt = (
-        len(CONTEXTO_NAMU) + len(TEMPLATE) + len(DOCUMENTOS_PROCESSO)
-        + len(nome) + 500
-    )
+    chars_prompt = len(CONTEXTO_NAMU) + len(TEMPLATE) + len(DOCUMENTOS_PROCESSO) + len(nome) + 500
     if url_ancora:
         chars_prompt += 6000
     tokens_input = chars_prompt // 4
@@ -265,61 +238,57 @@ def estimar_custo(nome: str, url_ancora: str = "", modelo: str = MODELO_TRIAGEM)
     custo_output = (tokens_output / 1_000_000) * custos["output"]
     custo_search = CUSTO_WEB_SEARCH * 3
 
-    total = custo_input + custo_output + custo_search
-
     return {
         "tokens_input": tokens_input,
         "tokens_output": tokens_output,
         "custo_tokens": round(custo_input + custo_output, 4),
         "custo_search": round(custo_search, 2),
-        "custo_total": round(total, 2),
+        "custo_total": round(custo_input + custo_output + custo_search, 2),
     }
 
 
-# ─────────────────────────────────────────
-# 4. LEITURA DA URL ÂNCORA
-# ─────────────────────────────────────────
-
 def ler_url(url: str, max_chars: int = 6000) -> str:
-    """Lê o conteúdo principal de uma URL."""
+    """Extrai texto limpo de uma URL via BeautifulSoup."""
     if not url:
         return ""
-
     try:
-        headers = {
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) "
-                "Chrome/120.0.0.0 Safari/537.36"
-            )
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         resp = requests.get(url, headers=headers, timeout=15)
         resp.raise_for_status()
 
         soup = BeautifulSoup(resp.text, "html.parser")
-
-        for tag in soup(["script", "style", "nav", "footer",
-                          "header", "aside", "form", "iframe"]):
+        for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form", "iframe"]):
             tag.decompose()
 
         texto = soup.get_text(separator="\n", strip=True)
         linhas = [l for l in texto.split("\n") if len(l.strip()) > 30]
-
         return "\n".join(linhas)[:max_chars]
-
     except Exception as e:
         return f"[Não foi possível acessar {url}: {e}]"
 
 
-# ─────────────────────────────────────────
-# 5. TRIAGEM VIA CLAUDE
-# ─────────────────────────────────────────
+def _extrair_resposta(resposta) -> tuple[str, int]:
+    """Extrai texto e conta buscas de uma resposta Claude com web search."""
+    partes_texto = []
+    buscas = 0
+
+    for bloco in resposta.content:
+        if bloco.type == "text":
+            partes_texto.append(bloco.text)
+        elif bloco.type == "server_tool_use":
+            buscas += 1
+            query = getattr(bloco.input, "query", "")
+            print(f"   🔍 Busca {buscas}: {query}")
+
+    texto = "\n".join(partes_texto)
+    linhas = [l for l in texto.split("\n") if not REGEX_RACIOCINIO.match(l.strip())]
+    return "\n".join(linhas).strip(), buscas
+
+
+# ── Triagem ──
 
 def analisar_tecnologia(nome: str, url_ancora: str = "", modelo: str = MODELO_TRIAGEM) -> str:
-    """
-    Claude recebe a URL âncora + faz buscas web adicionais automaticamente.
-    Ao final preenche o template completo.
-    """
+    """Triagem completa: URL âncora + web search + template estruturado."""
     cached = cache_get(nome, url_ancora)
     if cached:
         print("\n✅ Resultado encontrado no cache (sem custo)")
@@ -339,9 +308,7 @@ def analisar_tecnologia(nome: str, url_ancora: str = "", modelo: str = MODELO_TR
         if conteudo_ancora else ""
     )
 
-    template_preenchido = TEMPLATE.format(
-        data_hoje=datetime.now().strftime("%d/%m/%Y")
-    )
+    template_preenchido = TEMPLATE.format(data_hoje=datetime.now().strftime("%d/%m/%Y"))
 
     docs_texto = ""
     if DOCUMENTOS_PROCESSO:
@@ -370,7 +337,7 @@ SUA TAREFA:
    - Nível de maturidade no mercado
    - Riscos regulatórios se aplicável
 
-2. Com base na URL âncora (se fornecida) E nas buscas que fizer, preencha 
+2. Com base na URL âncora (se fornecida) E nas buscas que fizer, preencha
    COMPLETAMENTE o template abaixo em português.
 
 INSTRUÇÕES DE PREENCHIMENTO:
@@ -398,55 +365,22 @@ REGRA: NÃO faça perguntas ao usuário — este é um relatório final."""
     resposta = client.messages.create(
         model=modelo,
         max_tokens=16000,
-        tools=[{
-            "type": "web_search_20250305",
-            "name": "web_search",
-            "max_uses": 5
-        }],
+        tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
         messages=[{"role": "user", "content": prompt}]
     )
 
-    partes_texto = []
-    buscas_feitas = 0
-
-    for bloco in resposta.content:
-        if bloco.type == "text":
-            partes_texto.append(bloco.text)
-        elif bloco.type == "server_tool_use":
-            buscas_feitas += 1
-            query = getattr(bloco.input, "query", "")
-            print(f"   🔍 Busca {buscas_feitas}: {query}")
-
-    print(f"   ✓ {buscas_feitas} buscas realizadas pelo Claude")
+    resultado, buscas = _extrair_resposta(resposta)
+    print(f"   ✓ {buscas} buscas realizadas pelo Claude")
     print("   ✓ Template preenchido")
 
-    texto_completo = "\n".join(partes_texto)
-    linhas = texto_completo.split("\n")
-    linhas_filtradas = [
-        l for l in linhas
-        if not re.match(
-            r'^(Vou |Agora vou |Deixe-me |Deixa eu |Let me |Now I|'
-            r'Com base |Preciso |Vamos |Buscando |Pesquisando )',
-            l.strip()
-        )
-    ]
-
-    resultado = "\n".join(linhas_filtradas).strip()
-
     cache_set(nome, url_ancora, resultado)
-
     return resultado
 
 
-# ─────────────────────────────────────────
-# 5b. MAPEAMENTO DE TECNOLOGIAS OPEN-SOURCE
-# ─────────────────────────────────────────
+# ── Mapeamento ──
 
 def mapear_tecnologias(categoria: str) -> str:
-    """
-    Claude busca tecnologias open-source testáveis por categoria.
-    Usa Haiku (barato) — mapeamento não precisa de qualidade máxima.
-    """
+    """Busca tecnologias open-source testáveis por categoria via Haiku + web search."""
     cache_key_map = f"map|{categoria}"
     cached = cache_get(cache_key_map, "")
     if cached:
@@ -505,46 +439,19 @@ REGRAS DE FORMATO:
     resposta = client.messages.create(
         model=MODELO_MAPEAMENTO,
         max_tokens=4000,
-        tools=[{
-            "type": "web_search_20250305",
-            "name": "web_search",
-            "max_uses": 5
-        }],
+        tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
         messages=[{"role": "user", "content": prompt}]
     )
 
-    partes_texto = []
-    buscas_feitas = 0
-    for bloco in resposta.content:
-        if bloco.type == "text":
-            partes_texto.append(bloco.text)
-        elif bloco.type == "server_tool_use":
-            buscas_feitas += 1
-            query = getattr(bloco.input, "query", "")
-            print(f"   🔍 Busca {buscas_feitas}: {query}")
-
-    print(f"   ✓ {buscas_feitas} buscas realizadas")
-
-    texto_completo = "\n".join(partes_texto)
-    linhas = texto_completo.split("\n")
-    linhas_filtradas = [
-        l for l in linhas
-        if not re.match(
-            r'^(Vou |Agora vou |Deixe-me |Deixa eu |Let me |Now I|'
-            r'Com base |Preciso |Vamos |Buscando |Pesquisando )',
-            l.strip()
-        )
-    ]
-    resultado = "\n".join(linhas_filtradas).strip()
+    resultado, buscas = _extrair_resposta(resposta)
+    print(f"   ✓ {buscas} buscas realizadas")
+    print("   ✓ Mapeamento concluído")
 
     cache_set(cache_key_map, "", resultado)
-    print("   ✓ Mapeamento concluído")
     return resultado
 
 
-# ─────────────────────────────────────────
-# 6. SALVAR DOCUMENTO
-# ─────────────────────────────────────────
+# ── Salvar documento ──
 
 def salvar_documento(nome: str, conteudo: str, modelo: str = MODELO_TRIAGEM) -> str:
     nome_arquivo = (
@@ -559,24 +466,19 @@ def salvar_documento(nome: str, conteudo: str, modelo: str = MODELO_TRIAGEM) -> 
     )
     with open(nome_arquivo, "w", encoding="utf-8") as f:
         f.write(cabecalho + conteudo)
-
     return nome_arquivo
 
 
-# ─────────────────────────────────────────
-# 7. EXECUÇÃO PRINCIPAL
-# ─────────────────────────────────────────
+# ── CLI ──
 
 def avaliar_tecnologia(nome: str = "", url_ancora: str = ""):
     if not nome:
         print("\n" + "="*52)
-        print("  RADAR TECNOLÓGICO — NAMU")
+        print("  ESTEIRA DE INOVAÇÃO — NAMU")
         print(f"  {MODELO_TRIAGEM} + Web Search nativo")
         print("="*52)
         nome = input("\nNome da tecnologia: ").strip()
-        url_ancora = input(
-            "URL âncora (site/doc que te fez colocar no radar): "
-        ).strip()
+        url_ancora = input("URL âncora (site/doc que te fez colocar no radar): ").strip()
 
     if not nome:
         print("❌ Nome é obrigatório.")
@@ -592,17 +494,9 @@ def avaliar_tecnologia(nome: str = "", url_ancora: str = ""):
     print("="*52)
     print("\n📄 RESULTADO:\n")
     print(documento)
-    print("\n📋 Próximos passos:")
-    print("   1. Abra o arquivo .md gerado nesta pasta")
-    print("   2. Revise os campos que precisar")
-    print("   3. Cole no seu Google Doc")
 
     return documento, arquivo
 
-
-# ─────────────────────────────────────────
-# MODO MAPEAMENTO (CLI)
-# ─────────────────────────────────────────
 
 def mapear_cli():
     print("\n" + "="*52)
@@ -616,32 +510,11 @@ def mapear_cli():
     print("\n" + resultado)
 
 
-# ─────────────────────────────────────────
-# MODO BATCH
-# ─────────────────────────────────────────
-
 def avaliar_lista(tecnologias: list):
-    """
-    Avalia várias tecnologias em sequência.
-
-    Exemplo:
-        avaliar_lista([
-            {
-                "nome": "Ada Health API",
-                "url_ancora": "https://ada.com"
-            },
-            {
-                "nome": "Multimodal RAG",
-                "url_ancora": ""  # sem âncora — só busca web
-            },
-        ])
-    """
+    """Avalia várias tecnologias em sequência."""
     for item in tecnologias:
         print(f"\n{'='*52}\nAvaliando: {item['nome']}\n{'='*52}")
-        avaliar_tecnologia(
-            nome=item["nome"],
-            url_ancora=item.get("url_ancora", "")
-        )
+        avaliar_tecnologia(nome=item["nome"], url_ancora=item.get("url_ancora", ""))
     print(f"\n✅ {len(tecnologias)} tecnologias avaliadas.")
 
 
