@@ -1,21 +1,17 @@
 """
-Agent Innovation — Radar Tecnológico Namu
-==========================================
-Agente de IA que avalia tecnologias para o radar de inovação da Namu.
+Agent Innovation — Esteira de Inovação Namu
+=============================================
+Agente de IA para radar de inovação: mapeamento e triagem de tecnologias.
 
-Dois fluxos independentes:
-  1. Triagem: nome + URL âncora → template estruturado (Sonnet)
-  2. Mapeamento: categoria → lista de tecnologias open-source (Haiku)
-
-Pré-requisitos:
-    pip install -r requirements.txt
-
-Configuração:
-    Crie .env com: ANTHROPIC_API_KEY=sk-ant-...
+Configuração (.env):
+    ANTHROPIC_API_KEY=sk-ant-...
+    MODELO_TRIAGEM=claude-sonnet-4-20250514
+    MODELO_MAPEAMENTO=claude-haiku-4-5-20251001
+    CACHE_TTL_DIAS=30
 
 Como usar:
-    streamlit run app.py          (interface web)
-    python agent_innovation.py    (CLI interativo)
+    streamlit run app.py
+    python agent_innovation.py
 """
 
 import os
@@ -23,6 +19,7 @@ import re
 import glob
 import json
 import hashlib
+import time
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
@@ -33,9 +30,11 @@ from docx import Document
 load_dotenv()
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-MODELO_MAPEAMENTO = "claude-haiku-4-5-20251001"
-MODELO_TRIAGEM = "claude-sonnet-4-20250514"
-CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELO_MAPEAMENTO = os.getenv("MODELO_MAPEAMENTO", "claude-haiku-4-5-20251001")
+MODELO_TRIAGEM = os.getenv("MODELO_TRIAGEM", "claude-sonnet-4-20250514")
+CACHE_DIR = os.path.join(BASE_DIR, "cache")
+CACHE_TTL_DIAS = int(os.getenv("CACHE_TTL_DIAS", "30"))
 DOCS_PATH = r"C:\Users\Arthur Santos\Documents\0. Processo de Inovação"
 CUSTO_WEB_SEARCH = 0.10
 
@@ -44,125 +43,22 @@ CUSTOS = {
     "claude-sonnet-4-20250514":   {"input": 3.00, "output": 15.00},
 }
 
-def _carregar_contexto() -> str:
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "contexto_namu.txt")
+REGEX_RACIOCINIO = re.compile(
+    r'^(Vou |Agora vou |Deixe-me |Deixa eu |Let me |Now I|'
+    r'Com base |Preciso |Vamos |Buscando |Pesquisando )'
+)
+
+
+def _carregar_arquivo(nome_arquivo: str) -> str:
+    path = os.path.join(BASE_DIR, nome_arquivo)
     if os.path.exists(path):
         with open(path, "r", encoding="utf-8") as f:
             return f.read().strip()
     return ""
 
 
-CONTEXTO_NAMU = _carregar_contexto()
-
-TEMPLATE = """
-## IDENTIFICAÇÃO DA TECNOLOGIA
-
-**Nome da Tecnologia:** [preencher]
-**Categoria:** [IA / Infra / Automação / Data / HealthTech / outro]
-**Fonte:** [Open source / Proprietária / Startup / Big Tech]
-**Link oficial/Repo:** [preencher]
-**Data de entrada no Radar:** {data_hoje}
-
----
-
-## CRITÉRIO DE ENTRADA NO RADAR
-
-⬜ Potencial de Impacto Estratégico
-⬜ Capacidade de Geração ou Estruturação de Dados
-⬜ Criação de Ativo Proprietário
-⬜ Aumento de Escalabilidade ou Eficiência
-⬜ Movimento Relevante no Mercado
-
-**Por que entrou no Radar no contexto da Namu:**
-[preencher — objetivo, estratégico, sem ser genérico]
-
----
-
-## TRIAGEM
-
-### Possível Problema Resolvido
-
-**Qual dor potencial ela ataca?**
-[preencher]
-
-**É dor interna (Operação/Tech) ou externa (Usuário)?**
-[preencher]
-
-**Atua mais em:**
-⬜ Plataforma
-⬜ Massificação
-⬜ Dados & Impacto
-⬜ Lifestyle & Phygital
-⬜ Educação
-
----
-
-### Maturidade Tecnológica
-
-**Nível de maturidade:**
-⬜ Experimental
-⬜ Early Adoption
-⬜ Consolidado
-
-**Está sendo usada por players relevantes?**
-[sim/não + quem, se sim]
-
-**Possui documentação sólida?**
-[sim/não + observação breve]
-
-**Tem comunidade ativa?**
-[sim/não + observação breve]
-
----
-
-### Estimativa Financeira Inicial
-
-**Estimativa qualitativa de custo:**
-⬜ Muito Baixo  ⬜ Baixo  ⬜ Moderado  ⬜ Alto  ⬜ Muito Alto
-
-**Modelo de custo:**
-⬜ Open-source  ⬜ SaaS por usuário  ⬜ API por requisição  ⬜ Infra própria  ⬜ Licença enterprise
-
-**Observação:**
-[preencher]
-
----
-
-### Complexidade Técnica Inicial
-
-**Avaliação preliminar (qualitativa):**
-[preencher]
-
-**Integração com stack atual:**
-⬜ Simples
-⬜ Moderada
-⬜ Complexo
-
-**Exige infraestrutura própria?**
-[sim/não + detalhes]
-
-**Exige especialização específica?**
-[sim/não + qual]
-
-**Risco regulatório aparente?**
-[sim/não + contexto LGPD/ANVISA se aplicável]
-
----
-
-### Decisão de Triagem
-
-⬜ Avança na Priorização (TAM/SAM/SOM)
-⬜ Mantém Observação em Radar
-⬜ Descartado
-
-**Justificativa:**
-[objetivo, estratégico, específico para a Namu]
-"""
-
-REGEX_RACIOCINIO = re.compile(
-    r'^(Vou |Agora vou |Deixe-me |Deixa eu |Let me |Now I|'
-    r'Com base |Preciso |Vamos |Buscando |Pesquisando )'
-)
+CONTEXTO_NAMU = _carregar_arquivo("contexto_namu.txt")
+TEMPLATE = _carregar_arquivo("template_triagem.txt")
 
 
 def carregar_documentos_processo(max_chars_por_doc: int = 3000) -> str:
@@ -209,6 +105,23 @@ def cache_set(nome: str, url: str, resultado: str):
                    "data": datetime.now().isoformat()}, f, ensure_ascii=False)
 
 
+def limpar_cache_antigo():
+    """Remove arquivos de cache com mais de CACHE_TTL_DIAS dias."""
+    if not os.path.exists(CACHE_DIR):
+        return
+    limite = time.time() - (CACHE_TTL_DIAS * 86400)
+    removidos = 0
+    for arq in glob.glob(os.path.join(CACHE_DIR, "*.json")):
+        if os.path.getmtime(arq) < limite:
+            os.remove(arq)
+            removidos += 1
+    if removidos:
+        print(f"🗑️ {removidos} cache(s) expirado(s) removido(s) (>{CACHE_TTL_DIAS} dias)")
+
+
+limpar_cache_antigo()
+
+
 # ── Utilitários ──
 
 def validar_url(url: str) -> tuple[bool, str]:
@@ -223,6 +136,27 @@ def validar_url(url: str) -> tuple[bool, str]:
         return False, f"URL retornou status {resp.status_code}"
     except requests.RequestException as e:
         return False, f"URL inacessível: {e}"
+
+
+def validar_links_resposta(texto: str) -> str:
+    """Valida URLs encontradas na resposta e marca as inválidas."""
+    urls = re.findall(r'https?://[^\s\)>\]]+', texto)
+    urls_unicas = list(dict.fromkeys(urls))
+
+    invalidas = []
+    for url in urls_unicas:
+        url_limpa = url.rstrip(".,;:|")
+        ok, _ = validar_url(url_limpa)
+        if not ok:
+            invalidas.append(url_limpa)
+
+    if invalidas:
+        aviso = "\n\n⚠️ **Links não verificados (podem estar incorretos):**\n"
+        for url in invalidas:
+            aviso += f"- {url}\n"
+        texto += aviso
+
+    return texto
 
 
 def estimar_custo(nome: str, url_ancora: str = "", modelo: str = MODELO_TRIAGEM) -> dict:
@@ -372,6 +306,9 @@ REGRA: NÃO faça perguntas ao usuário — este é um relatório final."""
     resultado, buscas = _extrair_resposta(resposta)
     print(f"   ✓ {buscas} buscas realizadas pelo Claude")
     print("   ✓ Template preenchido")
+    print("   🔗 Validando links...")
+
+    resultado = validar_links_resposta(resultado)
 
     cache_set(nome, url_ancora, resultado)
     return resultado
@@ -445,6 +382,9 @@ REGRAS DE FORMATO:
 
     resultado, buscas = _extrair_resposta(resposta)
     print(f"   ✓ {buscas} buscas realizadas")
+    print("   🔗 Validando links...")
+
+    resultado = validar_links_resposta(resultado)
     print("   ✓ Mapeamento concluído")
 
     cache_set(cache_key_map, "", resultado)

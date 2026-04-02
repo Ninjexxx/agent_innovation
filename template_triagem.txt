@@ -1,0 +1,102 @@
+## IDENTIFICAÇÃO DA TECNOLOGIA
+
+**Nome da Tecnologia:** [preencher]
+**Categoria:** [IA / Infra / Automação / Data / HealthTech / outro]
+**Fonte:** [Open source / Proprietária / Startup / Big Tech]
+**Link oficial/Repo:** [preencher]
+**Data de entrada no Radar:** {data_hoje}
+
+---
+
+## CRITÉRIO DE ENTRADA NO RADAR
+
+⬜ Potencial de Impacto Estratégico
+⬜ Capacidade de Geração ou Estruturação de Dados
+⬜ Criação de Ativo Proprietário
+⬜ Aumento de Escalabilidade ou Eficiência
+⬜ Movimento Relevante no Mercado
+
+**Por que entrou no Radar no contexto da Namu:**
+[preencher — objetivo, estratégico, sem ser genérico]
+
+---
+
+## TRIAGEM
+
+### Possível Problema Resolvido
+
+**Qual dor potencial ela ataca?**
+[preencher]
+
+**É dor interna (Operação/Tech) ou externa (Usuário)?**
+[preencher]
+
+**Atua mais em:**
+⬜ Plataforma
+⬜ Massificação
+⬜ Dados & Impacto
+⬜ Lifestyle & Phygital
+⬜ Educação
+
+---
+
+### Maturidade Tecnológica
+
+**Nível de maturidade:**
+⬜ Experimental
+⬜ Early Adoption
+⬜ Consolidado
+
+**Está sendo usada por players relevantes?**
+[sim/não + quem, se sim]
+
+**Possui documentação sólida?**
+[sim/não + observação breve]
+
+**Tem comunidade ativa?**
+[sim/não + observação breve]
+
+---
+
+### Estimativa Financeira Inicial
+
+**Estimativa qualitativa de custo:**
+⬜ Muito Baixo  ⬜ Baixo  ⬜ Moderado  ⬜ Alto  ⬜ Muito Alto
+
+**Modelo de custo:**
+⬜ Open-source  ⬜ SaaS por usuário  ⬜ API por requisição  ⬜ Infra própria  ⬜ Licença enterprise
+
+**Observação:**
+[preencher]
+
+---
+
+### Complexidade Técnica Inicial
+
+**Avaliação preliminar (qualitativa):**
+[preencher]
+
+**Integração com stack atual:**
+⬜ Simples
+⬜ Moderada
+⬜ Complexo
+
+**Exige infraestrutura própria?**
+[sim/não + detalhes]
+
+**Exige especialização específica?**
+[sim/não + qual]
+
+**Risco regulatório aparente?**
+[sim/não + contexto LGPD/ANVISA se aplicável]
+
+---
+
+### Decisão de Triagem
+
+⬜ Avança na Priorização (TAM/SAM/SOM)
+⬜ Mantém Observação em Radar
+⬜ Descartado
+
+**Justificativa:**
+[objetivo, estratégico, específico para a Namu]
