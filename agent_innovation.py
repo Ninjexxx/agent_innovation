@@ -216,7 +216,9 @@ def _extrair_resposta(resposta) -> tuple[str, int]:
 
     texto = "\n".join(partes_texto)
     linhas = [l for l in texto.split("\n") if not REGEX_RACIOCINIO.match(l.strip())]
-    return "\n".join(linhas).strip(), buscas
+    resultado = "\n".join(linhas).strip()
+    resultado = re.sub(r'\s+([.,;:!?])', r'\1', resultado)
+    return resultado, buscas
 
 
 # ── Triagem ──
