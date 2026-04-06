@@ -393,6 +393,83 @@ REGRAS DE FORMATO:
     return resultado
 
 
+# ── Descoberta ──
+
+def descobrir_novidades() -> str:
+    """Busca novidades open-source recentes nas áreas de interesse da Namu."""
+    cache_key_desc = "descoberta|semanal"
+    cached = cache_get(cache_key_desc, "")
+    if cached:
+        print("\n✅ Descoberta encontrada no cache (sem custo)")
+        return cached
+
+    print("\n🔥 Claude buscando novidades open-source...")
+    print(f"   🤖 Modelo: {MODELO_MAPEAMENTO}")
+
+    prompt = f"""Você é um analista sênior de inovação tecnológica.
+
+CONTEXTO DA EMPRESA:
+{CONTEXTO_NAMU}
+
+SUA TAREFA:
+Busque tecnologias, bibliotecas, modelos e ferramentas OPEN-SOURCE que surgiram ou ganharam tração RECENTEMENTE (últimos 30 dias) e que sejam relevantes para o contexto da empresa acima.
+
+ONDE BUSCAR:
+- GitHub Trending e repos com crescimento recente de stars
+- HuggingFace (modelos e datasets novos)
+- Blogs técnicos, Hacker News, dev.to, Reddit (r/MachineLearning, r/opensource)
+- Papers With Code (implementações recentes)
+
+REGRAS:
+- SOMENTE open-source (clonável, testável localmente)
+- NÃO inclua SaaS, APIs pagas ou produtos comerciais
+- Foque no que é NOVO ou ganhou tração recente, não em projetos antigos
+- Priorize relevância para as áreas da empresa
+
+FORMATO OBRIGATÓRIO:
+
+| # | Nome | Repo/Link | O que faz (1 linha) | Por que é relevante | Quando surgiu/cresceu |
+|---|------|-----------|---------------------|--------------------|-----------------------|
+| 1 | [nome] | [URL real] | [descrição] | [relevância para a empresa] | [data/período] |
+
+Após a tabela:
+
+**🎯 Top 3 para avaliar esta semana:**
+1. [nome] — [por que agora]
+2. [nome] — [por que agora]
+3. [nome] — [por que agora]
+
+---
+
+**Fontes consultadas:**
+- [URL 1] — [o que encontrou]
+- [URL 2] — [o que encontrou]
+
+REGRAS DE FORMATO:
+- SEMPRE use a tabela markdown acima
+- SEMPRE inclua links reais (URLs completas)
+- NÃO faça perguntas ao usuário — este é um relatório final
+- NÃO inclua projetos com mais de 6 meses sem novidade
+- Seja objetivo. Dados reais. Sem inventar repos."""
+
+    resposta = client.messages.create(
+        model=MODELO_MAPEAMENTO,
+        max_tokens=4000,
+        tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    resultado, buscas = _extrair_resposta(resposta)
+    print(f"   ✓ {buscas} buscas realizadas")
+    print("   🔗 Validando links...")
+
+    resultado = validar_links_resposta(resultado)
+    print("   ✓ Descoberta concluída")
+
+    cache_set(cache_key_desc, "", resultado)
+    return resultado
+
+
 # ── Salvar documento ──
 
 def salvar_documento(nome: str, conteudo: str, modelo: str = MODELO_TRIAGEM) -> str:

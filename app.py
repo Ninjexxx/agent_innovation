@@ -6,7 +6,7 @@ Rodar: streamlit run app.py
 import streamlit as st
 from datetime import datetime
 from agent_innovation import (
-    analisar_tecnologia, mapear_tecnologias,
+    analisar_tecnologia, mapear_tecnologias, descobrir_novidades,
     validar_url, estimar_custo, cache_get,
     DOCUMENTOS_PROCESSO, MODELO_TRIAGEM, MODELO_MAPEAMENTO, CUSTOS
 )
@@ -21,9 +21,44 @@ if DOCUMENTOS_PROCESSO:
 
 st.divider()
 
-aba_mapeamento, aba_triagem = st.tabs(["🗺️ Mapeamento", "🔍 Triagem"])
+aba_descoberta, aba_mapeamento, aba_triagem = st.tabs(["🔥 Descoberta", "🗺️ Mapeamento", "🔍 Triagem"])
 
-# ── Aba 1: Mapeamento ──
+# ── Aba 1: Descoberta ──
+with aba_descoberta:
+    st.caption("Busca automática de novidades open-source relevantes para a Namu — baseado no contexto da empresa.")
+
+    cached_desc = cache_get("descoberta|semanal", "")
+    if cached_desc:
+        st.info("📦 Descoberta em cache — sem custo. Delete o cache para buscar novidades atualizadas.")
+    else:
+        custos_haiku = CUSTOS[MODELO_MAPEAMENTO]
+        custo_desc = round(
+            (2000 / 1_000_000) * custos_haiku["input"]
+            + (2000 / 1_000_000) * custos_haiku["output"]
+            + 0.10 * 3, 2
+        )
+        st.caption(f"💰 Custo estimado: **${custo_desc:.2f}** ({MODELO_MAPEAMENTO} · ~3 buscas web)")
+
+    if st.button("🔥 Descobrir novidades", type="primary"):
+        with st.spinner("Claude buscando novidades open-source..."):
+            resultado_desc = descobrir_novidades()
+        st.session_state["resultado_descoberta"] = resultado_desc
+
+    if "resultado_descoberta" in st.session_state:
+        st.divider()
+        st.subheader("🔥 Novidades Open-Source")
+        st.markdown(st.session_state["resultado_descoberta"])
+
+        nome_desc = f"descoberta_{datetime.now().strftime('%Y%m%d_%H%M')}.md"
+        st.download_button(
+            "💾 Baixar descoberta .md",
+            data=f"# Descoberta Open-Source — {datetime.now().strftime('%d/%m/%Y')}\n\n"
+                 + st.session_state["resultado_descoberta"],
+            file_name=nome_desc,
+            mime="text/markdown",
+        )
+
+# ── Aba 2: Mapeamento ──
 with aba_mapeamento:
     st.caption("Busca tecnologias open-source testáveis por categoria via Claude + Web Search.")
 
@@ -68,7 +103,7 @@ with aba_mapeamento:
             mime="text/markdown",
         )
 
-# ── Aba 2: Triagem ──
+# ── Aba 3: Triagem ──
 with aba_triagem:
     nome = st.text_input("Nome da tecnologia", placeholder="Ex: QuickPose.ai")
     url_ancora = st.text_input("URL âncora (opcional)", placeholder="https://...")
