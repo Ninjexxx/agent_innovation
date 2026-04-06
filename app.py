@@ -7,7 +7,7 @@ import streamlit as st
 from datetime import datetime
 from agent_innovation import (
     analisar_tecnologia, mapear_tecnologias, descobrir_novidades,
-    validar_url, estimar_custo, cache_get,
+    validar_url, estimar_custo, cache_get, _semana_atual,
     DOCUMENTOS_PROCESSO, MODELO_TRIAGEM, MODELO_MAPEAMENTO, CUSTOS
 )
 
@@ -27,9 +27,9 @@ aba_descoberta, aba_mapeamento, aba_triagem = st.tabs(["🔥 Descoberta", "🗺�
 with aba_descoberta:
     st.caption("Busca automática de novidades open-source relevantes para a Namu — baseado no contexto da empresa.")
 
-    cached_desc = cache_get("descoberta|semanal", "")
+    cached_desc = cache_get(f"descoberta|{_semana_atual()}", "")
     if cached_desc:
-        st.info("📦 Descoberta em cache — sem custo. Delete o cache para buscar novidades atualizadas.")
+        st.info(f"📦 Descoberta da semana {_semana_atual()} em cache — sem custo.")
     else:
         custos_haiku = CUSTOS[MODELO_MAPEAMENTO]
         custo_desc = round(

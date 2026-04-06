@@ -395,21 +395,51 @@ REGRAS DE FORMATO:
 
 # ── Descoberta ──
 
+def _semana_atual() -> str:
+    return datetime.now().strftime("%Y-W%W")
+
+
+def _buscar_descoberta_anterior() -> str:
+    """Busca o resultado da descoberta da semana anterior no cache."""
+    if not os.path.exists(CACHE_DIR):
+        return ""
+    descobertas = []
+    for arq in glob.glob(os.path.join(CACHE_DIR, "*.json")):
+        with open(arq, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        if data.get("nome", "").startswith("descoberta|") and data["nome"] != f"descoberta|{_semana_atual()}":
+            descobertas.append(data)
+    if not descobertas:
+        return ""
+    descobertas.sort(key=lambda d: d.get("data", ""), reverse=True)
+    return descobertas[0].get("resultado", "")
+
+
 def descobrir_novidades() -> str:
     """Busca novidades open-source recentes nas áreas de interesse da Namu."""
-    cache_key_desc = "descoberta|semanal"
+    cache_key_desc = f"descoberta|{_semana_atual()}"
     cached = cache_get(cache_key_desc, "")
     if cached:
-        print("\n✅ Descoberta encontrada no cache (sem custo)")
+        print("\n✅ Descoberta desta semana encontrada no cache (sem custo)")
         return cached
 
     print("\n🔥 Claude buscando novidades open-source...")
     print(f"   🤖 Modelo: {MODELO_MAPEAMENTO}")
 
+    anterior = _buscar_descoberta_anterior()
+    bloco_exclusao = ""
+    if anterior:
+        print("   📋 Descoberta anterior encontrada — excluindo repetições")
+        bloco_exclusao = f"""\n\nTECNOLOGIAS JÁ LISTADAS EM DESCOBERTAS ANTERIORES (NÃO repita nenhuma delas):
+{anterior[:3000]}
+
+Se não encontrar novidades diferentes das listadas acima, diga explicitamente que não há novidades relevantes esta semana."""
+
     prompt = f"""Você é um analista sênior de inovação tecnológica.
 
 CONTEXTO DA EMPRESA:
 {CONTEXTO_NAMU}
+{bloco_exclusao}
 
 SUA TAREFA:
 Busque tecnologias, bibliotecas, modelos e ferramentas OPEN-SOURCE que surgiram ou ganharam tração RECENTEMENTE (últimos 30 dias) e que sejam relevantes para o contexto da empresa acima.
@@ -425,6 +455,7 @@ REGRAS:
 - NÃO inclua SaaS, APIs pagas ou produtos comerciais
 - Foque no que é NOVO ou ganhou tração recente, não em projetos antigos
 - Priorize relevância para as áreas da empresa
+- NÃO repita tecnologias de descobertas anteriores (se fornecidas acima)
 
 FORMATO OBRIGATÓRIO:
 
