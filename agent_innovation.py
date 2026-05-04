@@ -459,11 +459,21 @@ REGRAS:
 
 FORMATO OBRIGATÓRIO:
 
-| # | Nome | Repo/Link | O que faz (1 linha) | Por que é relevante | Quando surgiu/cresceu |
-|---|------|-----------|---------------------|--------------------|-----------------------|
-| 1 | [nome] | [URL real] | [descrição] | [relevância para a empresa] | [data/período] |
+Para cada tecnologia encontrada, liste como um bloco individual:
 
-Após a tabela:
+### 1. [Nome da tecnologia]
+- **Link:** [URL real do repo]
+- **Tipo:** [Biblioteca / Framework / SDK / Modelo / Dataset / Ferramenta CLI]
+- **Categoria:** [IA / Computer Vision / NLP / Data / HealthTech / Infra / Automação / outro]
+- **O que faz:** [descrição em 1-2 linhas]
+- **Promessa:** [qual problema resolve ou que capacidade entrega]
+- **Linguagem:** [Python / JS / Go / etc.]
+- **Quando surgiu/cresceu:** [data ou período]
+- **Por que é relevante para a Namu:** [1 linha específica]
+
+---
+
+Após listar todas:
 
 **🎯 Top 3 para avaliar esta semana:**
 1. [nome] — [por que agora]
@@ -477,8 +487,10 @@ Após a tabela:
 - [URL 2] — [o que encontrou]
 
 REGRAS DE FORMATO:
-- SEMPRE use a tabela markdown acima
+- SEMPRE use o formato de blocos acima, um por tecnologia
 - SEMPRE inclua links reais (URLs completas)
+- SEMPRE classifique o Tipo e a Categoria
+- SEMPRE descreva a Promessa (o que ela entrega de valor)
 - NÃO faça perguntas ao usuário — este é um relatório final
 - NÃO inclua projetos com mais de 6 meses sem novidade
 - Seja objetivo. Dados reais. Sem inventar repos."""
