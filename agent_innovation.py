@@ -116,7 +116,7 @@ def limpar_cache_antigo():
             os.remove(arq)
             removidos += 1
     if removidos:
-        print(f"🗑️ {removidos} cache(s) expirado(s) removido(s) (>{CACHE_TTL_DIAS} dias)")
+        print(f"[cache] {removidos} expirado(s) removido(s) (>{CACHE_TTL_DIAS} dias)")
 
 
 limpar_cache_antigo()
