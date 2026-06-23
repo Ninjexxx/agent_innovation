@@ -1,259 +1,193 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.11+-blue?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/framework-CrewAI-ff6b35?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCI+PHRleHQgeT0iMjAiIGZvbnQtc2l6ZT0iMjAiPvCfpI88L3RleHQ+PC9zdmc+" alt="CrewAI">
   <img src="https://img.shields.io/badge/LLM-Claude%20(Anthropic)-blueviolet?logo=anthropic&logoColor=white" alt="Claude">
-  <img src="https://img.shields.io/badge/GPU-not%20required-brightgreen" alt="No GPU">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
-  <img src="https://img.shields.io/badge/status-internal%20testing-orange" alt="Status">
+  <img src="https://img.shields.io/badge/output-PDF%20Report-red?logo=adobe&logoColor=white" alt="PDF">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
 <h1 align="center">🔭 Agent Innovation</h1>
 
 <p align="center">
-  <strong>AI agent for technology radar evaluation</strong><br>
-  Scrapes web sources, reads internal process documents, and uses Claude + Web Search<br>
-  to fill a structured evaluation template. Includes TAM/SAM/SOM scoring.
-</p>
-
-<p align="center">
-  <em>🇧🇷 All generated output and code (variables, comments, prompts) are in Brazilian Portuguese (pt-BR) — internal testing at <a href="https://namu.com.br">Namu</a></em>
+  <strong>Autonomous AI agent for technology viability assessment</strong><br>
+  Multi-agent system that researches GitHub repos, analyzes licenses, scrapes documentation,<br>
+  evaluates market positioning, and generates structured PDF reports.
 </p>
 
 ---
 
-## 🧐 What is it?
+## What it does
 
-Agent Innovation is an AI agent that evaluates technologies for Namu's innovation radar. It combines URL scraping, internal document reading (`.docx`), and automatic web searches via Claude to fill structured triage and prioritization templates.
+Give it a technology name (and optionally a GitHub URL), and the agent autonomously:
 
-**One call. Full evaluation. No copy-paste.**
+1. **Researches** — Scrapes the repo, analyzes license (MIT/Apache = ✅, GPL = ⚠️), checks activity, stars, contributors
+2. **Analyzes** — Searches for market news, identifies competitors, evaluates adoption and business risk
+3. **Reports** — Synthesizes everything into a scored Technical Viability Report exported as PDF
 
 ```
-Technology + Anchor URL           Category (e.g. "rPPG")
-         ↓                                 ↓
-  URL Reading (BeautifulSoup)     Claude + Web Search
-         ↓                                 ↓
-  Process Documents (.docx)       Open-source tech list
-         ↓                                 ↓
-  Claude + Web Search             Top 3 recommendations
-         ↓
-  ┌──────────────────────────────────┐
-  │  Triage (structured template)    │
-  └──────────────────────────────────┘
-         ↓
-  Markdown (.md) + JSON Cache
+Input: "LangGraph" + https://github.com/langchain-ai/langgraph
+                           ↓
+         ┌─────────────────────────────────────┐
+         │  🔬 Researcher Agent                │
+         │  GitHub API + Web Scraping          │
+         │  License · Stars · Activity · Docs  │
+         └──────────────┬──────────────────────┘
+                        ↓
+         ┌─────────────────────────────────────┐
+         │  📊 Market Analyst Agent            │
+         │  News · Competitors · Adoption      │
+         │  Funding · Risk Assessment          │
+         └──────────────┬──────────────────────┘
+                        ↓
+         ┌─────────────────────────────────────┐
+         │  📄 Report Generator Agent          │
+         │  Structured scoring (1-5)           │
+         │  Recommendation: ADOPT/HOLD/AVOID   │
+         │  PDF export                         │
+         └──────────────┬──────────────────────┘
+                        ↓
+              output/report_langgraph_20250401.pdf
 ```
 
 ---
 
-## 📊 What it generates
+## Architecture
 
-| Stage | Description | Web Search |
-|-------|-------------|:----------:|
-| 🗺️ Mapping | Discovers open-source technologies by category | ✅ Yes (up to 5) |
-| 🔍 Triage | Identification, entry criteria, maturity, cost, complexity, decision | ✅ Yes (up to 5) |
-| 💾 Cache | Results saved as JSON — reprocessing at zero cost | — |
+Built with **CrewAI** — a multi-agent orchestration framework. Three specialized agents collaborate sequentially:
 
-### Mapping Output
+| Agent | Role | Tools |
+|-------|------|-------|
+| 🔬 Researcher | Deep technical analysis of the technology | GitHub API, Web Scraper |
+| 📊 Market Analyst | Competitive landscape and business viability | Web Scraper |
+| 📄 Reporter | Synthesizes findings into scored PDF report | PDF Generator |
 
-- Table with name, repo link, description, stars, last activity, language
-- Top 3 recommendations for immediate triage
-- Only open-source, testable projects (libraries, frameworks, SDKs, models)
+### Custom Tools
 
-### Triage Template
-
-- Technology identification and category
-- Radar entry criteria (strategic impact, data generation, scalability)
-- Triage (pain point, maturity, cost estimate, technical complexity)
-- Triage decision (advance / observe / discard)
+| Tool | What it does |
+|------|-------------|
+| `analyze_github_repo` | Calls GitHub API — extracts stars, license, activity, contributors, topics |
+| `scrape_website` | BeautifulSoup — extracts clean text from any URL (max 8K chars) |
+| `generate_pdf_report` | FPDF2 — generates structured PDF with headers, sections, and scoring |
 
 ---
 
-## ✅ Cost per evaluation
-
-| Model | Cost/evaluation | Quality |
-|-------|:--------------:|:---------:|
-| `claude-haiku-4-5-20251001` (default) | **~$0.05** | Good |
-| `claude-sonnet-4-20250514` | ~$0.34 | High |
-
-> Mapping costs ~$0.05 per category search.
-
----
-
-## ⚡ Quick start
+## Quick Start
 
 ### Prerequisites
 
 - Python 3.11+
-- [Anthropic](https://console.anthropic.com/) API key
-- **No GPU required**
-- Innovation process `.docx` documents (optional)
+- [Anthropic API key](https://console.anthropic.com/)
 
 ### Installation
 
 ```bash
-# Clone the repository
 git clone https://github.com/Ninjexxx/agent_innovation.git
 cd agent_innovation
 
-# Create virtual environment
 python -m venv .venv
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate     # Linux/Mac
 
-# Activate (Windows)
-.venv\Scripts\activate
-
-# Activate (Linux/Mac)
-source .venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
 ### Configuration
 
-Create a `.env` file in the project root:
-
+```bash
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
 ```
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-```
 
----
-
-## 🎬 How to use
-
-### 1. 🌐 Web interface (Streamlit) — recommended
+### Usage
 
 ```bash
-streamlit run app.py
-```
+# With GitHub URL (recommended)
+python main.py "LangGraph" "https://github.com/langchain-ai/langgraph"
 
-Opens a dashboard with two tabs:
-- **Triage** — Name + URL inputs, cache indicator, URL validation, cost estimate, evaluate button, `.md` download
-- **Mapping** — Category input, discovers open-source technologies, `.md` download
-
-### 2. 💻 CLI — Interactive mode
-
-```bash
-python agent_innovation.py
-```
-
-### 3. 🔄 CLI — Batch mode
-
-```python
-from agent_innovation import avaliar_lista
-
-avaliar_lista([
-    {"nome": "Ada Health API", "url_ancora": "https://ada.com"},
-    {"nome": "Multimodal RAG", "url_ancora": ""},
-])
+# Without URL (agent will search)
+python main.py "CrewAI"
 ```
 
 ---
 
-## 📤 Output
+## Output
 
-### Terminal
+### PDF Report Structure
 
-```
-🚀 Avaliando 'QuickPose.ai'...
+| Section | Content |
+|---------|---------|
+| Executive Summary | What it is + verdict in 2-3 sentences |
+| Technical Assessment | Repo metrics, license analysis, capabilities, risks |
+| Market Analysis | Adoption, competitors, funding, market risks |
+| Viability Score | 5 criteria scored 1-5 with notes |
+| Recommendation | ADOPT / TRIAL / ASSESS / HOLD / AVOID |
 
-🧠 Claude analisando com busca web + URL âncora...
-   📖 Lendo URL âncora: https://quickpose.ai
-   ✓ URL lida
-   📄 16,500 chars de documentos de processo carregados
-   🔍 Busca 1: QuickPose.ai SDK documentation pricing
-   🔍 Busca 2: QuickPose.ai health tech use cases
-   🔍 Busca 3: rPPG pose estimation SDK comparison
-   ✓ 3 buscas realizadas pelo Claude
-   ✓ Template preenchido
-
-✅ Arquivo salvo: radar_quickpose.ai_20250627_1430.md
-```
-
-### Generated file
-
-```
-radar_technology_name_YYYYMMDD_HHMM.md
-```
+Reports are saved to `output/report_{name}_{date}.pdf`
 
 ---
 
-## 🔬 How it works (technical)
-
-### Pipeline
-
-1. **Validation** — HEAD request to check anchor URL accessibility
-2. **Scraping** — BeautifulSoup extracts clean text (max 6,000 chars)
-3. **Context** — Loads 8 innovation process `.docx` documents (~16,500 chars)
-4. **Analysis** — Claude receives everything + performs up to 5 automatic web searches via Tool Use
-5. **Filtering** — Regex removes Claude's intermediate reasoning lines
-6. **Cache** — Result saved as JSON (MD5 hash of name+url as key)
-
-### Stack
-
-| Technology | Usage |
-|-----------|-------|
-| Claude API (Anthropic) | LLM + native web search via Tool Use |
-| BeautifulSoup | Anchor URL scraping |
-| python-docx | Process document reading |
-| Streamlit | Web interface |
-| python-dotenv | Environment variable management |
-| hashlib + JSON | Local cache system |
-
----
-
-## 📁 Project structure
+## Project Structure
 
 ```
 agent_innovation/
-├── agent_innovation.py       # Main agent (analysis + prioritization)
-├── app.py                    # Streamlit interface
-├── requirements.txt          # Dependencies
-├── .env                      # API key (not versioned)
-├── .gitignore                # Ignores .env, cache/, .venv/, generated *.md
-├── cache/                    # JSON cache of evaluations
-└── README.md                 # This file
+├── main.py                    # Entry point — orchestrates the crew
+├── src/
+│   ├── agents/
+│   │   └── crew.py            # Agent definitions (roles, goals, backstories)
+│   ├── tools/
+│   │   ├── github_tool.py     # GitHub API analysis
+│   │   ├── scraper_tool.py    # Web content extraction
+│   │   └── pdf_tool.py        # PDF report generation
+│   └── config/
+│       └── settings.py        # Environment and constants
+├── output/                    # Generated PDF reports
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
 
 ---
 
-## 💡 Usage tips
+## Viability Scoring Framework
 
-| Tip | Why |
-|-----|-----|
-| 🔗 Always provide an anchor URL | More context = more accurate evaluation |
-| 📄 Keep `.docx` files updated | They are the process criteria reference |
-| 💰 Use Haiku for exploration | ~$0.05/eval vs ~$0.34 with Sonnet |
-| 🔄 Clear cache to re-evaluate | Delete the corresponding `.json` in `cache/` |
-| 📊 Only prioritize what passed triage | Prioritization uses triage as input |
+| Criterion | What it measures | 5 = Best |
+|-----------|-----------------|----------|
+| License Compatibility | Business-friendly license? | MIT/Apache-2.0 |
+| Technical Maturity | Production-ready? Active maintenance? | Stable, well-tested |
+| Community Health | Contributors, issues response, docs | Large, active community |
+| Market Traction | Adoption by real companies | Wide enterprise adoption |
+| Business Risk | Vendor lock-in, abandonment risk | Low risk, diverse backing |
 
----
-
-## ⚠️ Limitations
-
-- 🤖 **AI-generated results** — review before using in decisions
-- 🌐 Web search depends on Anthropic API availability
-- 📄 `.docx` documents are read as plain text (no formatting/tables)
-- 💰 Each evaluation consumes API credits (~$0.05 with Haiku)
-- 🔒 Document path is hardcoded to the local environment
+**Recommendation scale:**
+- **ADOPT** (4.5-5.0) — Use in production now
+- **TRIAL** (3.5-4.4) — Worth a proof-of-concept
+- **ASSESS** (2.5-3.4) — Monitor and evaluate further
+- **HOLD** (1.5-2.4) — Not ready yet, wait
+- **AVOID** (1.0-1.4) — Significant risks, do not use
 
 ---
 
-## 🏢 About
+## Tech Stack
 
-Project under **internal testing at [Namu](https://namu.com.br)** — a Brazilian health & wellness platform.
-
-- 🤖 **Powered by Claude** — Anthropic API with native web search
-- 🇧🇷 **Code and output in Portuguese** — variables, prompts, templates and results in pt-BR
-- 💻 **Runs on any computer** — no GPU required
-- 📦 **Smart cache** — doesn't reprocess completed evaluations
+| Technology | Purpose |
+|-----------|---------|
+| [CrewAI](https://github.com/crewAIInc/crewAI) | Multi-agent orchestration |
+| [Claude](https://docs.anthropic.com/) | LLM backbone (Sonnet 4) |
+| [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) | Web scraping |
+| [FPDF2](https://py-pdf.github.io/fpdf2/) | PDF generation |
+| GitHub REST API | Repository analysis |
 
 ---
 
-## 📚 References
+## Cost
 
-- [Anthropic API Docs](https://docs.anthropic.com/) — Claude models + Tool Use
-- [Streamlit](https://streamlit.io/) — UI framework for data apps
-- [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) — HTML parsing
-- [python-docx](https://python-docx.readthedocs.io/) — .docx file reading
+~$0.30-0.50 per full analysis (3 sequential agent calls with Claude Sonnet 4).
+
+---
+
+## License
+
+MIT
 
 ---
 

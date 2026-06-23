@@ -2,8 +2,5 @@
 .venv/
 __pycache__/
 *.pyc
-radar_*.md
-mapeamento_*.md
-scoring_*.md
-descoberta_*.md
-cache/
+output/*.pdf
+output/*.md
