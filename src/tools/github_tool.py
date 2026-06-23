@@ -53,10 +53,10 @@ def analyze_github_repo(repo_url: str) -> str:
 
 ### License Analysis
 **License:** {license_name}
-**Business-Friendly:** {'✅ Yes' if business_friendly else '❌ No — may restrict commercial use'}
+**Business-Friendly:** {'Yes' if business_friendly else 'No — may restrict commercial use'}
 
 ### Activity Indicators
-**Archived:** {'Yes ⚠️' if data.get('archived') else 'No'}
+**Archived:** {'Yes' if data.get('archived') else 'No'}
 **Topics:** {', '.join(data.get('topics', [])) or 'None'}
 **Has Wiki:** {'Yes' if data.get('has_wiki') else 'No'}
 **Has Discussions:** {'Yes' if data.get('has_discussions') else 'No'}
