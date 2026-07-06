@@ -2,6 +2,7 @@ from crewai import Agent
 from src.tools.github_tool import analyze_github_repo
 from src.tools.scraper_tool import scrape_website
 from src.tools.pdf_tool import generate_pdf_report
+from src.config.settings import MODEL
 
 
 def create_researcher() -> Agent:
@@ -13,6 +14,7 @@ def create_researcher() -> Agent:
         community health, license implications, and technical architecture. You are 
         methodical and always back your findings with data.""",
         tools=[analyze_github_repo, scrape_website],
+        llm=MODEL,
         verbose=True,
     )
 
@@ -26,6 +28,7 @@ def create_market_analyst() -> Agent:
         funding, partnerships, competitor moves, and adoption patterns. You think 
         strategically about business implications.""",
         tools=[scrape_website],
+        llm=MODEL,
         verbose=True,
     )
 
@@ -39,5 +42,6 @@ def create_report_generator() -> Agent:
         structure, scoring frameworks, and strategic recommendations. Your reports are 
         used by CTOs and VP Engineering to make build-vs-buy decisions.""",
         tools=[generate_pdf_report],
+        llm=MODEL,
         verbose=True,
     )

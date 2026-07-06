@@ -1,5 +1,5 @@
 """
-Agent Innovation — Tech Viability Agent
+Agent Innovation - Tech Viability Agent
 ========================================
 Autonomous AI agent that evaluates emerging technologies.
 Uses CrewAI to orchestrate multiple specialized agents that research,
@@ -12,13 +12,16 @@ Usage:
 import sys
 from crewai import Crew, Task, Process
 from src.agents.crew import create_researcher, create_market_analyst, create_report_generator
-from src.config.settings import MODEL
+from src.config.settings import ANTHROPIC_API_KEY
 
 import litellm
 litellm.drop_params = True
 
 
 def run(technology: str, repo_url: str = "") -> str:
+    if not ANTHROPIC_API_KEY:
+        raise RuntimeError("ANTHROPIC_API_KEY is not set. Copy .env.example to .env and add your API key.")
+
     researcher = create_researcher()
     analyst = create_market_analyst()
     reporter = create_report_generator()
@@ -100,7 +103,7 @@ def run(technology: str, repo_url: str = "") -> str:
         **Overall Score:** [average]/5
         
         ## Recommendation
-        [ADOPT / TRIAL / ASSESS / HOLD / AVOID] — [justification in 2-3 sentences]
+        [ADOPT / TRIAL / ASSESS / HOLD / AVOID] - [justification in 2-3 sentences]
         
         After writing the report content, use the PDF generation tool to save it.
         Pass the full report text as 'content' and "{technology}" as 'technology_name'.""",
@@ -130,7 +133,7 @@ if __name__ == "__main__":
     github_url = sys.argv[2] if len(sys.argv) > 2 else ""
 
     print(f"\n{'='*60}")
-    print(f"  AGENT INNOVATION — Tech Viability Agent")
+    print(f"  AGENT INNOVATION - Tech Viability Agent")
     print(f"  Analyzing: {tech_name}")
     print(f"{'='*60}\n")
 

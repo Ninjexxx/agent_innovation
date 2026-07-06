@@ -17,9 +17,9 @@ def scrape_website(url: str) -> str:
         for tag in soup(["script", "style", "nav", "footer", "header", "aside", "form", "iframe", "noscript"]):
             tag.decompose()
 
-        texto = soup.get_text(separator="\n", strip=True)
-        linhas = [l for l in texto.split("\n") if len(l.strip()) > 20]
-        content = "\n".join(linhas)[:8000]
+        text = soup.get_text(separator="\n", strip=True)
+        lines = [line for line in text.split("\n") if len(line.strip()) > 20]
+        content = "\n".join(lines)[:8000]
 
         return f"## Content from {url}\n\n{content}"
     except requests.RequestException as e:

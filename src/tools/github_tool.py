@@ -8,11 +8,12 @@ def analyze_github_repo(repo_url: str) -> str:
     """Analyzes a GitHub repository extracting metadata, license, activity and tech stack.
     Input should be a GitHub URL like https://github.com/owner/repo"""
 
-    match = re.match(r'https?://github\.com/([^/]+)/([^/]+)', repo_url.rstrip('/'))
+    match = re.match(r'https?://github\.com/([^/]+)/([^/#?]+)', repo_url.strip())
     if not match:
         return f"Invalid GitHub URL: {repo_url}"
 
     owner, repo = match.groups()
+    repo = repo.removesuffix(".git")
     headers = {"Accept": "application/vnd.github.v3+json"}
 
     try:
@@ -31,13 +32,15 @@ def analyze_github_repo(repo_url: str) -> str:
     contributors = "Unknown"
     try:
         contrib_resp = requests.get(f"https://api.github.com/repos/{owner}/{repo}/contributors?per_page=1&anon=true", headers=headers, timeout=10)
-        if "Link" in contrib_resp.headers:
+        if contrib_resp.status_code != 200:
+            contributors = f"Unknown (GitHub API status {contrib_resp.status_code})"
+        elif "Link" in contrib_resp.headers:
             last_page = re.search(r'page=(\d+)>; rel="last"', contrib_resp.headers["Link"])
             contributors = last_page.group(1) if last_page else "1"
         else:
             contributors = str(len(contrib_resp.json()))
-    except Exception:
-        pass
+    except requests.RequestException as e:
+        contributors = f"Unknown ({e})"
 
     return f"""## GitHub Repository Analysis: {data.get('full_name')}
 
@@ -53,7 +56,7 @@ def analyze_github_repo(repo_url: str) -> str:
 
 ### License Analysis
 **License:** {license_name}
-**Business-Friendly:** {'Yes' if business_friendly else 'No — may restrict commercial use'}
+**Business-Friendly:** {'Yes' if business_friendly else 'No - may restrict commercial use'}
 
 ### Activity Indicators
 **Archived:** {'Yes' if data.get('archived') else 'No'}
